@@ -1,40 +1,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, date
-from typing import Protocol, Any
+from datetime import date, datetime
+from typing import Any, Protocol
 
-
-# ============================================================
-# Exceptions métier
-# ============================================================
 
 class LogicError(Exception):
-    """Erreur métier générale."""
-    pass
+    """Erreur métier générique."""
 
 
 class ValidationError(LogicError):
-    """Erreur de validation des données."""
-    pass
+    """Erreur levée quand une donnée d'entrée est invalide."""
 
 
 class NotFoundError(LogicError):
-    """Objet introuvable."""
-    pass
+    """Erreur levée lorsqu'un document n'existe pas."""
 
 
 class PermissionError(LogicError):
-    """Erreur d'autorisation métier."""
-    pass
+    """Erreur levée lorsqu'un utilisateur n'a pas les droits nécessaires."""
 
-
-# ============================================================
-# Structures de données
-# ============================================================
 
 @dataclass
 class DocumentInput:
+    """Données nécessaires pour créer un document."""
+
     titre: str
     auteur: str
     date_document: str | date
@@ -43,12 +33,15 @@ class DocumentInput:
     categories: list[str] = field(default_factory=list)
     mots_cles: list[str] = field(default_factory=list)
     user_id: int | None = None
-    stockage: str = "local"   # local | shared
+    stockage: str = "local"  # local | partage
     chemin_fichier: str | None = None
+    type_fichier: str = ""
 
 
 @dataclass
 class SearchFilters:
+    """Filtres de recherche multicritère."""
+
     titre: str = ""
     auteur: str = ""
     categories: list[str] = field(default_factory=list)
@@ -60,11 +53,9 @@ class SearchFilters:
     sort_order: str = "desc"  # desc | asc
 
 
-# ============================================================
-# Contrat attendu côté database.py
-# ============================================================
-
 class DatabaseRepository(Protocol):
+    """Contrat minimal attendu côté database.py."""
+
     def insert_document(self, document_data: dict[str, Any]) -> int:
         ...
 
@@ -93,47 +84,47 @@ class DatabaseRepository(Protocol):
         ...
 
 
-# ============================================================
-# Logique métier
-# ============================================================
-
 class LogicService:
     """
-    Service métier principal.
+    Couche métier entre l'interface et la base de données.
 
-    Rôle :
-    - vérifier les données
-    - préparer les filtres de recherche
-    - appeler database.py
+    Responsabilités :
+    - validation des données saisies
+    - normalisation des valeurs
+    - préparation des filtres de recherche
+    - contrôle des droits simples
+    - délégation à database.py pour l'accès SQLite
     """
 
-    ALLOWED_SORT_FIELDS = {"date": "date_document", "titre": "titre", "auteur": "auteur"}
+    ALLOWED_SORT_FIELDS = {
+        "date": "date_document",
+        "titre": "titre",
+        "auteur": "auteur",
+    }
     ALLOWED_SORT_ORDER = {"asc", "desc"}
-    ALLOWED_STORAGE = {"local", "shared"}
+    ALLOWED_STORAGE = {"local", "partage"}
+    STORAGE_ALIASES = {"shared": "partage"}
 
     def __init__(self, repository: DatabaseRepository):
         self.repository = repository
 
-    # --------------------------------------------------------
-    # Ajout document
-    # --------------------------------------------------------
     def add_document(self, payload: DocumentInput) -> int:
-        """
-        Ajoute un document après validation métier.
-        Retourne l'id du document créé.
-        """
+        """Ajoute un document après validation métier."""
         normalized = self._validate_and_normalize_document(payload)
 
-        document_id = self.repository.insert_document({
-            "titre": normalized.titre,
-            "auteur": normalized.auteur,
-            "date_document": self._date_to_iso(normalized.date_document),
-            "ressource": normalized.ressource,
-            "description": normalized.description,
-            "user_id": normalized.user_id,
-            "stockage": normalized.stockage,
-            "chemin_fichier": normalized.chemin_fichier,
-        })
+        document_id = self.repository.insert_document(
+            {
+                "titre": normalized.titre,
+                "auteur": normalized.auteur,
+                "date_document": self._date_to_iso(normalized.date_document),
+                "ressource": normalized.ressource,
+                "description": normalized.description,
+                "user_id": normalized.user_id,
+                "stockage": normalized.stockage,
+                "chemin_fichier": normalized.chemin_fichier,
+                "type_fichier": normalized.type_fichier,
+            }
+        )
 
         if normalized.categories:
             self.repository.link_categories_to_document(document_id, normalized.categories)
@@ -142,26 +133,16 @@ class LogicService:
             self.repository.link_keywords_to_document(document_id, normalized.mots_cles)
 
         self.repository.add_history(document_id, "Création du document")
-
         return document_id
 
-    # --------------------------------------------------------
-    # Recherche multicritère
-    # --------------------------------------------------------
     def search_documents(self, filters: SearchFilters) -> list[dict[str, Any]]:
-        """
-        Prépare les filtres métier selon la spécification du document,
-        puis délègue la requête SQL à database.py.
-        """
+        """Prépare les filtres, délègue la recherche SQL et reformate le résultat."""
         prepared_filters = self._prepare_search_filters(filters)
         results = self.repository.search_documents(prepared_filters)
-
         return [self._format_document_result(doc) for doc in results]
 
-    # --------------------------------------------------------
-    # Consultation
-    # --------------------------------------------------------
     def get_document_details(self, document_id: int) -> dict[str, Any]:
+        """Retourne les détails d'un document par son id."""
         if not isinstance(document_id, int) or document_id <= 0:
             raise ValidationError("Identifiant de document invalide.")
 
@@ -171,43 +152,42 @@ class LogicService:
 
         return self._format_document_result(document)
 
-    # --------------------------------------------------------
-    # Archivage / suppression
-    # --------------------------------------------------------
     def archive_document(self, document_id: int, user_id: int) -> None:
+        """Archive un document si l'utilisateur en est propriétaire."""
         self._check_document_permission(document_id, user_id)
         self.repository.archive_document(document_id)
         self.repository.add_history(document_id, "Archivage du document")
 
     def delete_document(self, document_id: int, user_id: int) -> None:
+        """Supprime un document si l'utilisateur en est propriétaire."""
         self._check_document_permission(document_id, user_id)
         self.repository.delete_document(document_id)
 
-    # ========================================================
-    # Validation document
-    # ========================================================
     def _validate_and_normalize_document(self, payload: DocumentInput) -> DocumentInput:
+        """Nettoie et valide les données avant insertion."""
         titre = self._clean_text(payload.titre)
         auteur = self._clean_text(payload.auteur)
         ressource = self._clean_text(payload.ressource)
         description = self._clean_text(payload.description, allow_empty=True)
-        stockage = self._clean_text(payload.stockage).lower()
+        type_fichier = self._clean_text(payload.type_fichier, allow_empty=True)
+
+        stockage_raw = self._clean_text(payload.stockage).lower()
+        stockage = self.STORAGE_ALIASES.get(stockage_raw, stockage_raw)
 
         if not titre:
             raise ValidationError("Le titre est obligatoire.")
-
         if not auteur:
             raise ValidationError("L'auteur est obligatoire.")
-
         if not ressource:
             raise ValidationError("La ressource est obligatoire.")
-
         if stockage not in self.ALLOWED_STORAGE:
-            raise ValidationError("Le mode de stockage doit être 'local' ou 'shared'.")
+            raise ValidationError("Le mode de stockage doit être 'local' ou 'partage'.")
 
         parsed_date = self._parse_date(payload.date_document)
         if parsed_date is None:
-            raise ValidationError("La date du document est obligatoire et doit être valide (YYYY-MM-DD).")
+            raise ValidationError(
+                "La date du document est obligatoire et doit être valide (YYYY-MM-DD)."
+            )
 
         categories = self._normalize_string_list(payload.categories)
         mots_cles = self._normalize_string_list(payload.mots_cles)
@@ -223,16 +203,14 @@ class LogicService:
             user_id=payload.user_id,
             stockage=stockage,
             chemin_fichier=payload.chemin_fichier,
+            type_fichier=type_fichier,
         )
 
-    # ========================================================
-    # Préparation filtres recherche
-    # ========================================================
     def _prepare_search_filters(self, filters: SearchFilters) -> dict[str, Any]:
+        """Transforme les filtres de l'interface en paramètres utilisables par database.py."""
         titre = self._clean_text(filters.titre, allow_empty=True)
         auteur = self._clean_text(filters.auteur, allow_empty=True)
         ressource = self._clean_text(filters.ressource, allow_empty=True)
-
         categories = self._normalize_string_list(filters.categories)
         mots_cles = self._normalize_string_list(filters.mots_cles)
 
@@ -240,7 +218,9 @@ class LogicService:
         date_max = self._parse_date(filters.date_max) if filters.date_max else None
 
         if date_min and date_max and date_min > date_max:
-            raise ValidationError("La date minimale ne peut pas être supérieure à la date maximale.")
+            raise ValidationError(
+                "La date minimale ne peut pas être supérieure à la date maximale."
+            )
 
         sort_by = filters.sort_by.lower().strip() if filters.sort_by else "date"
         if sort_by not in self.ALLOWED_SORT_FIELDS:
@@ -262,42 +242,44 @@ class LogicService:
             "sort_order": sort_order,
         }
 
-    # ========================================================
-    # Formatage / permissions
-    # ========================================================
     def _format_document_result(self, doc: dict[str, Any]) -> dict[str, Any]:
-        """
-        Normalise le résultat pour l'interface.
-        """
+        """Uniformise le format retourné à l'interface."""
+        auteur = doc.get("auteur")
+        if not auteur:
+            nom = doc.get("auteur_nom", "")
+            prenom = doc.get("auteur_prenom", "")
+            auteur = f"{prenom} {nom}".strip() or nom or prenom
+
         return {
             "id": doc.get("id") or doc.get("idDoc"),
             "titre": doc.get("titre", ""),
-            "auteur": doc.get("auteur", ""),
+            "auteur": auteur,
             "description": doc.get("description", ""),
             "date": doc.get("date_document") or doc.get("date", ""),
             "categorie": doc.get("categorie") or doc.get("categories") or [],
             "ressource": doc.get("ressource", ""),
             "mots_cles": doc.get("mots_cles") or [],
-            "chemin_fichier": doc.get("chemin_fichier"),
+            "chemin_fichier": doc.get("chemin_fichier") or doc.get("ressource"),
             "stockage": doc.get("stockage"),
+            "type_fichier": doc.get("type_fichier"),
+            "statut": doc.get("statut"),
         }
 
     def _check_document_permission(self, document_id: int, user_id: int) -> None:
+        """Vérifie qu'un utilisateur peut modifier/supprimer un document."""
         if not isinstance(document_id, int) or document_id <= 0:
             raise ValidationError("Identifiant de document invalide.")
-
         if not isinstance(user_id, int) or user_id <= 0:
             raise ValidationError("Identifiant utilisateur invalide.")
 
-        belongs = self.repository.document_belongs_to_user(document_id, user_id)
-        if not belongs:
-            raise PermissionError("Vous ne pouvez pas modifier ou supprimer un document qui ne vous appartient pas.")
+        if not self.repository.document_belongs_to_user(document_id, user_id):
+            raise PermissionError(
+                "Vous ne pouvez pas modifier ou supprimer un document qui ne vous appartient pas."
+            )
 
-    # ========================================================
-    # Helpers
-    # ========================================================
     @staticmethod
     def _clean_text(value: Any, allow_empty: bool = False) -> str:
+        """Nettoie une valeur texte en supprimant les espaces inutiles."""
         if value is None:
             return "" if allow_empty else ""
 
@@ -308,22 +290,13 @@ class LogicService:
 
     @staticmethod
     def _normalize_string_list(values: list[str] | str | None) -> list[str]:
-        """
-        Accepte :
-        - ["urgent", "pdf"]
-        - "urgent, pdf"
-        - None
-        """
+        """Normalise une liste de chaînes et supprime les doublons."""
         if values is None:
             return []
 
-        if isinstance(values, str):
-            raw_items = values.split(",")
-        else:
-            raw_items = values
-
-        cleaned = []
-        seen = set()
+        raw_items = values.split(",") if isinstance(values, str) else values
+        cleaned: list[str] = []
+        seen: set[str] = set()
 
         for item in raw_items:
             text = str(item).strip()
@@ -331,17 +304,19 @@ class LogicService:
                 continue
 
             lowered = text.lower()
-            if lowered not in seen:
-                seen.add(lowered)
-                cleaned.append(text)
+            if lowered in seen:
+                continue
+
+            seen.add(lowered)
+            cleaned.append(text)
 
         return cleaned
 
     @staticmethod
     def _parse_date(value: str | date | None) -> date | None:
+        """Convertit une date au format YYYY-MM-DD vers un objet date."""
         if value is None:
             return None
-
         if isinstance(value, date):
             return value
 
@@ -356,4 +331,5 @@ class LogicService:
 
     @staticmethod
     def _date_to_iso(value: date | None) -> str | None:
+        """Retourne une date au format ISO YYYY-MM-DD."""
         return value.isoformat() if value else None

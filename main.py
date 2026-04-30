@@ -1,23 +1,24 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel
+from pathlib import Path
+
+from PyQt6.QtWidgets import QApplication
+
+from src.database import build_repository
+from src.interface import MainWindow
+from src.logic import LogicService
 
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("SAE 203 - Gestion documentaire")
-        self.setGeometry(100, 100, 800, 600)
-
-        label = QLabel("Application lancée", self)
-        label.move(20, 20)
-
-
-def main():
+def main() -> None:
+    project_root = Path(__file__).resolve().parent
     app = QApplication(sys.argv)
-    window = MainWindow()
+
+    repository = build_repository(project_root)
+    logic_service = LogicService(repository)
+
+    window = MainWindow(logic_service, project_root)
     window.show()
     sys.exit(app.exec())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
