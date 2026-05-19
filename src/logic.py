@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Protocol
 
+from src.categories import AUTHORIZED_CATEGORIES, CATEGORY_BY_LOWER_NAME
+
 
 class LogicError(Exception):
     """Erreur métier générique."""
@@ -60,6 +62,9 @@ class DatabaseRepository(Protocol):
         ...
 
     def link_categories_to_document(self, document_id: int, categories: list[str]) -> None:
+        ...
+
+    def list_categories(self) -> list[str]:
         ...
 
     def link_keywords_to_document(self, document_id: int, keywords: list[str]) -> None:
@@ -135,6 +140,10 @@ class LogicService:
         self.repository.add_history(document_id, "Création du document")
         return document_id
 
+    def list_categories(self) -> list[str]:
+        """Retourne les catégories autorisées pour l'interface."""
+        return list(AUTHORIZED_CATEGORIES)
+
     def search_documents(self, filters: SearchFilters) -> list[dict[str, Any]]:
         """Prépare les filtres, délègue la recherche SQL et reformate le résultat."""
         prepared_filters = self._prepare_search_filters(filters)
@@ -189,7 +198,7 @@ class LogicService:
                 "La date du document est obligatoire et doit être valide (YYYY-MM-DD)."
             )
 
-        categories = self._normalize_string_list(payload.categories)
+        categories = self._normalize_authorized_categories(payload.categories)
         mots_cles = self._normalize_string_list(payload.mots_cles)
 
         return DocumentInput(
@@ -311,6 +320,25 @@ class LogicService:
             cleaned.append(text)
 
         return cleaned
+
+    def _normalize_authorized_categories(self, values: list[str] | str | None) -> list[str]:
+        categories = self._normalize_string_list(values)
+        normalized: list[str] = []
+        unknown: list[str] = []
+
+        for category in categories:
+            authorized_category = CATEGORY_BY_LOWER_NAME.get(category.lower())
+            if authorized_category is None:
+                unknown.append(category)
+                continue
+            normalized.append(authorized_category)
+
+        if unknown:
+            raise ValidationError(
+                "Catégorie non autorisée : " + ", ".join(unknown)
+            )
+
+        return normalized
 
     @staticmethod
     def _parse_date(value: str | date | None) -> date | None:

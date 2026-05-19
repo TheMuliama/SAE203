@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -146,6 +147,63 @@ class LogiqueSelectionFichier:
         return fichier if fichier else None
 
 
+class CheckableComboBox(QComboBox):
+    """Menu déroulant permettant de cocher plusieurs valeurs."""
+
+    def __init__(self, placeholder: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.placeholder = placeholder
+        self._items_model = QStandardItemModel(self)
+        self.setModel(self._items_model)
+        self.setEditable(True)
+        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.lineEdit().setReadOnly(True)
+        self.view().pressed.connect(self._toggle_item)
+        self._update_display_text()
+
+    def add_checkable_items(self, values: list[str]) -> None:
+        model = self._model()
+        for value in values:
+            item = QStandardItem(value)
+            item.setFlags(
+                Qt.ItemFlag.ItemIsEnabled
+                | Qt.ItemFlag.ItemIsUserCheckable
+                | Qt.ItemFlag.ItemIsSelectable
+            )
+            item.setData(Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
+            model.appendRow(item)
+        self._update_display_text()
+
+    def checked_items(self) -> list[str]:
+        model = self._model()
+        checked: list[str] = []
+        for row in range(model.rowCount()):
+            item = model.item(row)
+            if item and item.checkState() == Qt.CheckState.Checked:
+                checked.append(item.text())
+        return checked
+
+    def _toggle_item(self, index) -> None:
+        item = self._model().itemFromIndex(index)
+        if not item:
+            return
+        new_state = (
+            Qt.CheckState.Unchecked
+            if item.checkState() == Qt.CheckState.Checked
+            else Qt.CheckState.Checked
+        )
+        item.setCheckState(new_state)
+        self._update_display_text()
+
+    def _update_display_text(self) -> None:
+        checked = self.checked_items()
+        text = ', '.join(checked) if checked else self.placeholder
+        self.lineEdit().setText(text)
+
+    def _model(self) -> QStandardItemModel:
+        return self._items_model
+
+
 class AddDocumentDialog(QDialog):
     """Formulaire simple d'ajout d'un document."""
 
@@ -172,8 +230,8 @@ class AddDocumentDialog(QDialog):
         self.edit_date = QLineEdit(date.today().isoformat())
         self.combo_stockage = QComboBox()
         self.combo_stockage.addItems(['local', 'partage'])
-        self.edit_categories = QLineEdit()
-        self.edit_categories.setPlaceholderText('Ex: Technique, Projet')
+        self.combo_categories = CheckableComboBox('Sélectionner des catégories')
+        self.combo_categories.add_checkable_items(self.logic.list_categories())
         self.edit_mots_cles = QLineEdit()
         self.edit_mots_cles.setPlaceholderText('Ex: sae203, urgent')
         self.edit_description = QTextEdit()
@@ -187,7 +245,7 @@ class AddDocumentDialog(QDialog):
         form.addRow('Auteur', self.edit_auteur)
         form.addRow('Date (YYYY-MM-DD)', self.edit_date)
         form.addRow('Stockage', self.combo_stockage)
-        form.addRow('Catégories', self.edit_categories)
+        form.addRow('Catégories', self.combo_categories)
         form.addRow('Mots-clés', self.edit_mots_cles)
         form.addRow('Description', self.edit_description)
         form.addRow(self.btn_parcourir, self.label_fichier)
@@ -221,7 +279,7 @@ class AddDocumentDialog(QDialog):
             date_document=self.edit_date.text(),
             ressource=relative_resource,
             description=self.edit_description.toPlainText(),
-            categories=self.edit_categories.text(),
+            categories=self.combo_categories.checked_items(),
             mots_cles=self.edit_mots_cles.text(),
             stockage=stockage,
             chemin_fichier=relative_resource,

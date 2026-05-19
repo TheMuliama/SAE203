@@ -4,6 +4,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from src.categories import AUTHORIZED_CATEGORIES
+
 
 class SQLiteRepository:
     """Accès SQLite pour l'application documentaire."""
@@ -34,7 +36,16 @@ class SQLiteRepository:
                     conn.executescript(self.schema_path.read_text(encoding='utf-8'))
                     conn.commit()
 
+        self._ensure_authorized_categories()
         self.seed_from_metadata_if_empty()
+
+    def _ensure_authorized_categories(self) -> None:
+        with self._connect() as conn:
+            conn.executemany(
+                'INSERT OR IGNORE INTO Categories (nomCat) VALUES (?)',
+                [(category,) for category in AUTHORIZED_CATEGORIES],
+            )
+            conn.commit()
 
     def seed_from_metadata_if_empty(self) -> None:
         metadata_dir = self.project_root / 'metadata' / 'documents'
@@ -152,6 +163,9 @@ class SQLiteRepository:
                     (document_id, cat_id),
                 )
             conn.commit()
+
+    def list_categories(self) -> list[str]:
+        return list(AUTHORIZED_CATEGORIES)
 
     def link_keywords_to_document(self, document_id: int, keywords: list[str]) -> None:
         with self._connect() as conn:
