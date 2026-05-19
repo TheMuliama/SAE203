@@ -149,12 +149,19 @@ class LogiqueSelectionFichier:
 class AddDocumentDialog(QDialog):
     """Formulaire simple d'ajout d'un document."""
 
-    def __init__(self, project_root: str | Path, parent: QWidget | None = None):
+    def __init__(
+        self,
+        project_root: str | Path,
+        logic_service: LogicService,
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
         self.project_root = Path(project_root)
+        self.logic = logic_service
         self.setWindowTitle('Ajouter un document')
         self.resize(480, 320)
         self.selected_file: str | None = None
+        self.created_document_id: int | None = None
 
         layout = QVBoxLayout(self)
         form = QFormLayout()
@@ -188,7 +195,7 @@ class AddDocumentDialog(QDialog):
         layout.addLayout(form)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.accept)
+        buttons.accepted.connect(self.enregistrer_document)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
@@ -201,10 +208,10 @@ class AddDocumentDialog(QDialog):
                 self.edit_titre.setText(Path(path).stem.replace('_', ' ').strip())
 
     def build_payload(self) -> DocumentInput:
-        if not self.selected_file:
-            raise ValidationError('Veuillez sélectionner un fichier.')
+        self._validate_form_before_copy()
 
         stockage = self.combo_stockage.currentText()
+        assert self.selected_file is not None
         relative_resource = self._copy_selected_file_to_storage(self.selected_file, stockage)
         suffix = Path(self.selected_file).suffix.upper().lstrip('.')
 
@@ -220,6 +227,30 @@ class AddDocumentDialog(QDialog):
             chemin_fichier=relative_resource,
             type_fichier=suffix,
         )
+
+    def enregistrer_document(self) -> None:
+        try:
+            payload = self.build_payload()
+            self.created_document_id = self.logic.add_document(payload)
+            self.accept()
+        except ValidationError as exc:
+            QMessageBox.warning(self, 'Validation', str(exc))
+        except Exception as exc:
+            QMessageBox.critical(self, 'Erreur', f"Échec de l'enregistrement : {exc}")
+
+    def _validate_form_before_copy(self) -> None:
+        if not self.selected_file:
+            raise ValidationError('Veuillez sélectionner un fichier.')
+        if not self.edit_titre.text().strip():
+            raise ValidationError('Le titre est obligatoire.')
+        if not self.edit_auteur.text().strip():
+            raise ValidationError("L'auteur est obligatoire.")
+        try:
+            date.fromisoformat(self.edit_date.text().strip())
+        except ValueError:
+            raise ValidationError(
+                'La date du document est obligatoire et doit être valide (YYYY-MM-DD).'
+            )
 
     def _copy_selected_file_to_storage(self, source_file: str, stockage: str) -> str:
         source = Path(source_file)
@@ -345,15 +376,9 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, 'Erreur', str(exc))
 
     def ajouter_document(self) -> None:
-        dialog = AddDocumentDialog(self.project_root, self)
+        dialog = AddDocumentDialog(self.project_root, self.logic, self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
-        try:
-            payload = dialog.build_payload()
-            doc_id = self.logic.add_document(payload)
-            QMessageBox.information(self, 'Ajout', f'Document ajouté avec succès (id {doc_id}).')
-            self._fill_table(self.logic.search_documents(SearchFilters()))
-        except ValidationError as exc:
-            QMessageBox.warning(self, 'Validation', str(exc))
-        except Exception as exc:
-            QMessageBox.critical(self, 'Erreur', str(exc))
+        doc_id = dialog.created_document_id
+        QMessageBox.information(self, 'Ajout', f'Document ajouté avec succès (id {doc_id}).')
+        self._fill_table(self.logic.search_documents(SearchFilters()))
