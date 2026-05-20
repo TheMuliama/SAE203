@@ -1,5 +1,9 @@
 import sys
 import os
+import platform
+import shutil
+import subprocess
+from pathlib import Path
 # Éléments d'interface
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QTableWidget, QTableWidgetItem, QLineEdit, 
@@ -11,11 +15,16 @@ from PyQt6.QtCore import (Qt, QTimer, QObject, QDate)
 # Pour le visuel
 from PyQt6.QtGui import (QIcon, QPixmap, QColor, QAction) 
 from Interaction import AddDocumentDialog
+from src.database import build_repository
+from src.logic import LogicService, SearchFilters
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, logic_service=None, project_root=None):
         super().__init__()
+        self.project_root = Path(project_root or Path(__file__).resolve().parent)
+        self.logic = logic_service or LogicService(build_repository(self.project_root))
+
         # Création de la fenêtre
         self.setWindowTitle("SAE 203 - Gestion documentaire")
         self.setWindowIcon(QIcon("pouce.png"))
@@ -43,7 +52,9 @@ class MainWindow(QMainWindow):
         self.table.setHorizontalHeaderLabels(["Titre", "Auteur", "Date", "Catégorie"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         left_layout.addWidget(self.table)
-        self.table.setSelectionBehavior(QHeaderView.SelectionBehavior.SelectRows)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         
         # On définit le mode de redimensionnement
         header = self.table.horizontalHeader()
@@ -102,10 +113,62 @@ class MainWindow(QMainWindow):
         self.search_bar.textChanged.connect(self.filtrerTableau)
         # Bouton ouvrir
         self.btn_ouvrir.clicked.connect(self.ouvrirDocumentSelectionne)
+        self.btn_telecharger.clicked.connect(self.telechargerDocument)
 
         # On ajoute la partie droite au layout principal
         main_layout.addWidget(right_panel, stretch=2)
+        self.chargerDocuments()
         
+    def chargerDocuments(self):
+        """Charge les documents depuis SQLite dans le tableau."""
+        try:
+            documents = self.logic.search_documents(SearchFilters())
+        except Exception as exc:
+            QMessageBox.critical(self, "Erreur", f"Impossible de charger les documents : {exc}")
+            return
+
+        self.table.setRowCount(0)
+        for document in documents:
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+            categories = ", ".join(document.get("categorie") or []) or "-"
+            valeurs = [
+                document.get("titre", ""),
+                document.get("auteur", ""),
+                document.get("date", ""),
+                categories,
+            ]
+
+            for col, valeur in enumerate(valeurs):
+                item = QTableWidgetItem(str(valeur))
+                item.setData(Qt.ItemDataRole.UserRole, document)
+                self.table.setItem(row, col, item)
+
+    def documentSelectionne(self):
+        current_row = self.table.currentRow()
+        if current_row == -1:
+            return None
+
+        item = self.table.item(current_row, 0)
+        if not item:
+            return None
+
+        document = item.data(Qt.ItemDataRole.UserRole)
+        return document if isinstance(document, dict) else None
+
+    def cheminDocumentSelectionne(self):
+        document = self.documentSelectionne()
+        if not document:
+            return None
+
+        ressource = document.get("chemin_fichier") or document.get("ressource")
+        if not ressource:
+            return None
+
+        chemin = Path(ressource)
+        if not chemin.is_absolute():
+            chemin = self.project_root / chemin
+        return chemin
 
     def afficherDetails(self, item):
         """ Met à jour la partie droite quand on clique sur le tableau """
@@ -119,7 +182,9 @@ class MainWindow(QMainWindow):
         self.info_auteur.setText(f"Auteur : {auteur}")
         self.info_date.setText(f"Date : {date}")
         self.info_cat.setText(f"Catégorie : {cat}")
-        self.desc_box.setText(f"Description incroyable de : {titre}")
+        document = self.documentSelectionne()
+        description = document.get("description") if document else ""
+        self.desc_box.setText(description or f"Aucune description pour : {titre}")
 
     def filtrerTableau(self):
         """ Recherche dynamique dans le tableau """
@@ -146,26 +211,32 @@ class MainWindow(QMainWindow):
             # Ici on met la logique pour ajouter au tableau (insertRow...)
 
     def ouvrirDocumentSelectionne(self):
-        import os
-        current_row = self.table.currentRow()
-        if current_row != -1:
-            # On récupère le chemin caché dans la colonne 0
-            file_path = self.table.item(current_row, 0).data(Qt.ItemDataRole.UserRole)
-            if file_path and os.path.exists(file_path):
-                os.startfile(file_path) # Ouvre le fichier avec le logiciel par défaut
+        file_path = self.cheminDocumentSelectionne()
+        if not file_path or not file_path.exists():
+            QMessageBox.warning(self, "Erreur", "Fichier introuvable sur le disque.")
+            return
+
+        try:
+            systeme = platform.system()
+            if systeme == "Windows":
+                os.startfile(str(file_path))
+            elif systeme == "Darwin":
+                subprocess.call(("open", str(file_path)))
             else:
-                QMessageBox.warning(self, "Erreur", "Fichier introuvable sur le disque.")
+                subprocess.call(("xdg-open", str(file_path)))
+        except Exception as exc:
+            QMessageBox.critical(self, "Erreur", f"Impossible d'ouvrir le document : {exc}")
 
     def telechargerDocument(self):
-        import shutil
-        current_row = self.table.currentRow()
-        if current_row != -1:
-            file_path = self.table.item(current_row, 0).data(Qt.ItemDataRole.UserRole)
-            if file_path:
-                dest_path, _ = QFileDialog.getSaveFileName(self, "Enregistrer sous", os.path.basename(file_path))
-                if dest_path:
-                    shutil.copy(file_path, dest_path) # Copie physique du fichier
-                    QMessageBox.information(self, "Succès", "Fichier téléchargé/copié avec succès.")
+        file_path = self.cheminDocumentSelectionne()
+        if not file_path or not file_path.exists():
+            QMessageBox.warning(self, "Erreur", "Fichier introuvable sur le disque.")
+            return
+
+        dest_path, _ = QFileDialog.getSaveFileName(self, "Enregistrer sous", file_path.name)
+        if dest_path:
+            shutil.copy(file_path, dest_path) # Copie physique du fichier
+            QMessageBox.information(self, "Succès", "Fichier téléchargé/copié avec succès.")
 
     def createActions(self):
         # Partie Fichier
@@ -307,8 +378,11 @@ class MainWindow(QMainWindow):
 
 
 def main():
-    app = QApplication(sys.argv)    
-    window = MainWindow()
+    project_root = Path(__file__).resolve().parent
+    app = QApplication(sys.argv)
+    repository = build_repository(project_root)
+    logic_service = LogicService(repository)
+    window = MainWindow(logic_service, project_root)
     window.show()
     sys.exit(app.exec())
 
