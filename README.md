@@ -40,3 +40,9 @@ Sauvegarde et affichage du travail sur le projet :
 ```bash
 git push origin main
 ```
+
+
+## Lancement
+```bash
+python main.py
+```
