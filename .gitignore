@@ -5,4 +5,5 @@ venv/
 .vscode/
 .idea/
 data/*.db
+.codex
 .codex/
