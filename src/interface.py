@@ -569,10 +569,6 @@ class MainWindow(QMainWindow):
         if not document_id:
             QMessageBox.warning(self, "Erreur", "Impossible d'identifier le document sélectionné.")
             return
-        user_id = document.get("user_id")
-        if not user_id:
-            QMessageBox.warning(self, "Erreur", "Impossible d'identifier le propriétaire du document.")
-            return
 
         confirm = QMessageBox.question(
             self, "Confirmation",
@@ -584,7 +580,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.logic.delete_document(int(document_id), int(user_id))
+            self.logic.delete_document(int(document_id))
             self.chargerDocuments()
             self.info_titre.setText("Titre : -")
             self.info_auteur.setText("Auteur : -")

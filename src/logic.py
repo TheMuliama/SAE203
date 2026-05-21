@@ -167,9 +167,10 @@ class LogicService:
         self.repository.archive_document(document_id)
         self.repository.add_history(document_id, "Archivage du document")
 
-    def delete_document(self, document_id: int, user_id: int) -> None:
-        """Supprime un document si l'utilisateur en est propriétaire."""
-        self._check_document_permission(document_id, user_id)
+    def delete_document(self, document_id: int) -> None:
+        """Supprime un document après validation de son identifiant."""
+        if not isinstance(document_id, int) or document_id <= 0:
+            raise ValidationError("Identifiant de document invalide.")
         self.repository.delete_document(document_id)
 
     def _validate_and_normalize_document(self, payload: DocumentInput) -> DocumentInput:
