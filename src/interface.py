@@ -17,7 +17,7 @@ from PyQt6.QtGui import (QIcon, QPixmap, QColor, QAction)
 
 from Interaction import AddDocumentDialog
 from src.database import build_repository
-from src.logic import LogicService, SearchFilters
+from src.logic import DocumentInput, LogicService, SearchFilters, ValidationError
 
 
 class MainWindow(QMainWindow):
@@ -208,15 +208,63 @@ class MainWindow(QMainWindow):
             # Cache ou montre la ligne selon le résultat
             self.table.setRowHidden(row, not match)
 
-    def newDocument(self):
-        # Ouvre la boîte de dialogue d'ajout d'un document.
-        # Le programme va aller chercher AddDocumentDialog dans dialogs.py
-        dialog = AddDocumentDialog(self)
+    def importDocument(self):
+        # Ouvre la boîte de dialogue d'import et enregistre le document en base.
+        dialog = AddDocumentDialog(self, self.logic.list_categories())
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
-            print(f"On ajoute : {data['titre']} par {data['auteur']}")
-            # Ici on met la logique pour ajouter au tableau (insertRow...)
+            try:
+                if not data["fichier"]:
+                    raise ValidationError("Veuillez sélectionner un fichier.")
+                if not data["titre"].strip():
+                    raise ValidationError("Le titre est obligatoire.")
+                if not data["auteur"].strip():
+                    raise ValidationError("L'auteur est obligatoire.")
+
+                relative_resource = self.copierFichierDansStockage(
+                    data["fichier"],
+                    data["stockage"],
+                )
+                suffix = Path(data["fichier"]).suffix.upper().lstrip(".")
+
+                document_id = self.logic.add_document(
+                    DocumentInput(
+                        titre=data["titre"],
+                        auteur=data["auteur"],
+                        date_document=data["date"],
+                        ressource=relative_resource,
+                        description=data["description"],
+                        categories=[data["categorie"]],
+                        stockage=data["stockage"],
+                        chemin_fichier=relative_resource,
+                        type_fichier=suffix,
+                    )
+                )
+                QMessageBox.information(self, "Ajout", f"Document ajouté avec succès (id {document_id}).")
+                self.chargerDocuments()
+            except ValidationError as exc:
+                QMessageBox.warning(self, "Validation", str(exc))
+            except Exception as exc:
+                QMessageBox.critical(self, "Erreur", f"Impossible d'ajouter le document : {exc}")
+
+    def copierFichierDansStockage(self, source_file, stockage):
+        # Copie le fichier choisi dans l'espace applicatif et retourne son chemin relatif.
+        source = Path(source_file)
+        target_dir = self.project_root / "documents" / stockage
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        target = target_dir / source.name
+        if target.exists():
+            stem = source.stem
+            suffix = source.suffix
+            index = 1
+            while target.exists():
+                target = target_dir / f"{stem}_{index}{suffix}"
+                index += 1
+
+        shutil.copy2(source, target)
+        return str(target.relative_to(self.project_root)).replace("\\", "/")
 
     def ouvrirDocumentSelectionne(self):
         # Ouvre le fichier du document sélectionné avec l'application système.
@@ -257,16 +305,10 @@ class MainWindow(QMainWindow):
         """
         
         ######## Partie Fichier ########
-        # Nouveau
-        self.actNew = QAction(QIcon("assets/icons/papier.png"), "&Nouveau", self)
-        self.actNew.setShortcut("Ctrl+N")
-        self.actNew.setStatusTip("Nouveau document")
-        self.actNew.triggered.connect(self.newDocument)
-
         self.actArchive = QAction(QIcon("assets/icons/papier.png"), "&Archive", self)
         self.actArchive.setShortcut("Ctrl+R")
         self.actArchive.setStatusTip("Archive des documents récents")
-        #self.actArchive.triggered.connect(self.newDocument)
+        #self.actArchive.triggered.connect(self.importDocument)
 
         # Quitter l'appli
         self.actExit = QAction(QIcon("assets/icons/quitter.png"), "Quitter", self)
@@ -288,11 +330,11 @@ class MainWindow(QMainWindow):
         self.actDelete.triggered.connect(self.deleteDocument)
  
         ######## Partie Importer ########
-        # Sélectiionner un document à importer
         self.actImport = QAction(QIcon("assets/icons/ouvrir.png"), "&Sélectionner un document...", self)
         self.actImport.setShortcut("Ctrl+O")
         self.actImport.setStatusTip("Importer un document depuis votre ordinateur")
         self.actImport.triggered.connect(self.importDocument)
+
 
     def createMenuBar(self):
         """
@@ -302,8 +344,6 @@ class MainWindow(QMainWindow):
         # Partie pour Fichier
         menu = self.menuBar()
         file = menu.addMenu("&Fichier")
-        file.addAction(self.actNew)
-        file.addSeparator()
         file.addAction(self.actArchive)
         file.addSeparator()
         file.addAction(self.actExport)
@@ -314,7 +354,6 @@ class MainWindow(QMainWindow):
         edition = menu.addMenu("&Édition")
         edition.addAction(self.actDelete)
 
-        # Partie pour le reste
         import_menu = menu.addMenu("&Importer")
         import_menu.addAction(self.actImport)
 
@@ -366,11 +405,15 @@ class MainWindow(QMainWindow):
                 QMessageBox.critical(self, "Erreur", f"Impossible d'exporter : {e}")
 
     def editDocument(self):
-        # Point d'entrée prévu pour modifier le document sélectionné.
+        """
+        Point d'entrée prévu pour modifier le document sélectionné.
+        """
         print("Action : Modifier le document")
 
     def deleteDocument(self):
-        # Supprime la ligne actuellement sélectionnée après confirmation.
+        """
+        Supprime la ligne actuellement sélectionnée après confirmation.
+        """
         current_row = self.table.currentRow()
 
         if current_row != -1: # Une ligne est sélectionnée
@@ -384,27 +427,3 @@ class MainWindow(QMainWindow):
                 self.table.removeRow(current_row) # Supprime la ligne du tableau
         else:
             QMessageBox.warning(self, "Attention", "Veuillez cliquer sur une ligne du tableau d'abord.")
-
-    def importDocument(self):
-        """
-        Ajoute visuellement un fichier sélectionné depuis l'ordinateur.
-        """
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Sélectionner un document", "",
-            "Tous les fichiers (*);;PDF (*.pdf);;Images (*.png *.jpg)"
-        )
-
-        if file_path:
-            # 1. Extraire le nom du fichier depuis le chemin complet
-            import os
-            nom_fichier = os.path.basename(file_path)
-            date_import = QDate.currentDate().toString("dd/MM/yyyy")
-
-            # 2. Insérer une nouvelle ligne au début (index 0)
-            self.table.insertRow(0)
-
-            # 3. Remplir les colonnes (Titre, Auteur, Date, Catégorie)
-            self.table.setItem(0, 0, QTableWidgetItem(nom_fichier))
-            self.table.setItem(0, 1, QTableWidgetItem("Moi")) # Auteur par défaut
-            self.table.setItem(0, 2, QTableWidgetItem(date_import))
-            self.table.setItem(0, 3, QTableWidgetItem("Importé"))
