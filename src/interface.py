@@ -412,18 +412,34 @@ class MainWindow(QMainWindow):
 
     def deleteDocument(self):
         """
-        Supprime la ligne actuellement sélectionnée après confirmation.
+        Supprime le document sélectionné après confirmation.
         """
-        current_row = self.table.currentRow()
-
-        if current_row != -1: # Une ligne est sélectionnée
-            confirm = QMessageBox.question(
-                self, "Confirmation",
-                "Voulez-vous vraiment supprimer ce document ?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-
-            if confirm == QMessageBox.StandardButton.Yes:
-                self.table.removeRow(current_row) # Supprime la ligne du tableau
-        else:
+        document = self.documentSelectionne()
+        if not document:
             QMessageBox.warning(self, "Attention", "Veuillez cliquer sur une ligne du tableau d'abord.")
+            return
+
+        document_id = document.get("id")
+        if not document_id:
+            QMessageBox.warning(self, "Erreur", "Impossible d'identifier le document sélectionné.")
+            return
+
+        confirm = QMessageBox.question(
+            self, "Confirmation",
+            "Voulez-vous vraiment supprimer ce document ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            self.logic.delete_document(int(document_id))
+            self.chargerDocuments()
+            self.info_titre.setText("Titre : -")
+            self.info_auteur.setText("Auteur : -")
+            self.info_date.setText("Date : -")
+            self.info_cat.setText("Catégorie : -")
+            self.desc_box.clear()
+        except Exception as exc:
+            QMessageBox.critical(self, "Erreur", f"Impossible de supprimer le document : {exc}")
