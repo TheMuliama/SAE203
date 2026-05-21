@@ -11,12 +11,77 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
                              QMessageBox, QTextEdit, QDialog, QFormLayout, QComboBox,
                              QDialogButtonBox)
 # Logique de base et signaux
-from PyQt6.QtCore import (Qt, QTimer, QObject, QDate)
+from PyQt6.QtCore import (Qt, QTimer, QObject, QDate, QEvent)
 # Pour le visuel
-from PyQt6.QtGui import (QIcon, QPixmap, QColor, QAction)
+from PyQt6.QtGui import (QIcon, QPixmap, QColor, QAction, QStandardItem, QStandardItemModel)
 
 from src.database import build_repository
 from src.logic import DocumentInput, LogicService, SearchFilters, ValidationError
+
+
+class CheckableComboBox(QComboBox):
+    """Menu déroulant permettant de cocher plusieurs catégories."""
+
+    def __init__(self, placeholder, parent=None):
+        super().__init__(parent)
+        self.placeholder = placeholder
+        self._items_model = QStandardItemModel(self)
+        self.setModel(self._items_model)
+        self.setEditable(True)
+        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.lineEdit().setReadOnly(True)
+        self.view().viewport().installEventFilter(self)
+        self._update_display_text()
+
+    def add_checkable_items(self, values):
+        for value in values:
+            item = QStandardItem(value)
+            item.setFlags(
+                Qt.ItemFlag.ItemIsEnabled
+                | Qt.ItemFlag.ItemIsUserCheckable
+                | Qt.ItemFlag.ItemIsSelectable
+            )
+            item.setData(Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
+            self._items_model.appendRow(item)
+        self._update_display_text()
+
+    def checked_items(self):
+        checked = []
+        for row in range(self._items_model.rowCount()):
+            item = self._items_model.item(row)
+            if item and item.checkState() == Qt.CheckState.Checked:
+                checked.append(item.text())
+        return checked
+
+    def eventFilter(self, watched, event):
+        if watched == self.view().viewport():
+            if event.type() == QEvent.Type.MouseButtonPress:
+                return True
+
+            if event.type() == QEvent.Type.MouseButtonRelease:
+                index = self.view().indexAt(event.position().toPoint())
+                if index.isValid():
+                    self._toggle_item(index)
+                return True
+
+        return super().eventFilter(watched, event)
+
+    def _toggle_item(self, index):
+        item = self._items_model.itemFromIndex(index)
+        if not item:
+            return
+
+        new_state = (
+            Qt.CheckState.Unchecked
+            if item.checkState() == Qt.CheckState.Checked
+            else Qt.CheckState.Checked
+        )
+        item.setCheckState(new_state)
+        self._update_display_text()
+
+    def _update_display_text(self):
+        checked = self.checked_items()
+        self.lineEdit().setText(", ".join(checked) if checked else self.placeholder)
 
 
 class AddDocumentDialog(QDialog):
@@ -46,8 +111,8 @@ class AddDocumentDialog(QDialog):
         self.stockage_input = QComboBox()
         self.stockage_input.addItems(["local", "partage"])
 
-        self.cat_input = QComboBox()
-        self.cat_input.addItems(categories or ["Rapport", "Projet", "Technique"])
+        self.cat_input = CheckableComboBox("Sélectionner des catégories")
+        self.cat_input.add_checkable_items(categories or ["Rapport", "Projet", "Technique"])
 
         self.desc_input = QTextEdit()
         self.desc_input.setPlaceholderText("Saisissez la description...")
@@ -61,7 +126,7 @@ class AddDocumentDialog(QDialog):
         form.addRow("Auteur :", self.auteur_input)
         form.addRow("Date :", self.date_input)
         form.addRow("Stockage :", self.stockage_input)
-        form.addRow("Catégorie :", self.cat_input)
+        form.addRow("Catégories :", self.cat_input)
         form.addRow("Description :", self.desc_input)
         form.addRow(self.file_button, self.file_label)
 
@@ -80,7 +145,7 @@ class AddDocumentDialog(QDialog):
             "auteur": self.auteur_input.text(),
             "date": self.date_input.date().toString("yyyy-MM-dd"),
             "stockage": self.stockage_input.currentText(),
-            "categorie": self.cat_input.currentText(),
+            "categories": self.cat_input.checked_items(),
             "description": self.desc_input.toPlainText(),
             "fichier": self.selected_file,
         }
@@ -316,7 +381,7 @@ class MainWindow(QMainWindow):
                         date_document=data["date"],
                         ressource=relative_resource,
                         description=data["description"],
-                        categories=[data["categorie"]],
+                        categories=data["categories"],
                         stockage=data["stockage"],
                         chemin_fichier=relative_resource,
                         type_fichier=suffix,
