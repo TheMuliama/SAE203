@@ -256,6 +256,7 @@ class SQLiteRepository:
                 d.type_fichier,
                 d.stockage,
                 d.statut,
+                d.idUser,
                 u.nom AS auteur_nom,
                 u.prenom AS auteur_prenom,
                 u.matricule AS auteur_matricule
@@ -282,6 +283,7 @@ class SQLiteRepository:
                     d.type_fichier,
                     d.stockage,
                     d.statut,
+                    d.idUser,
                     u.nom AS auteur_nom,
                     u.prenom AS auteur_prenom,
                     u.matricule AS auteur_matricule
