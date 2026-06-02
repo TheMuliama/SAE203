@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QApplication,
                              QHBoxLayout, QTableWidget, QTableWidgetItem, QLineEdit,
                              QLabel, QPushButton, QHeaderView, QDateEdit, QFileDialog,
                              QMessageBox, QTextEdit, QDialog, QFormLayout, QComboBox,
-                             QDialogButtonBox)
+                             QDialogButtonBox, QCheckBox)
 # Logique de base et signaux
 from PyQt6.QtCore import (Qt, QTimer, QObject, QDate, QEvent)
 # Pour le visuel
@@ -52,6 +52,13 @@ class CheckableComboBox(QComboBox):
             if item and item.checkState() == Qt.CheckState.Checked:
                 checked.append(item.text())
         return checked
+
+    def clear_checked_items(self):
+        for row in range(self._items_model.rowCount()):
+            item = self._items_model.item(row)
+            if item:
+                item.setCheckState(Qt.CheckState.Unchecked)
+        self._update_display_text()
 
     def eventFilter(self, watched, event):
         if watched == self.view().viewport():
@@ -192,10 +199,8 @@ class MainWindow(QMainWindow):
         left_container = QWidget()
         left_layout = QVBoxLayout(left_container)
 
-        # La barre de recherche
-        self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Rechercher un document...")
-        left_layout.addWidget(self.search_bar)
+        self.creerFiltresRecherche(left_layout)
+
         self.table = QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["Titre", "Auteur", "Date", "Catégorie"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -257,8 +262,6 @@ class MainWindow(QMainWindow):
         # --- CONNEXIONS ---
         # Quand on clique sur une ligne du tableau
         self.table.itemClicked.connect(self.afficherDetails)
-        # Quand on tape dans la barre de recherche
-        self.search_bar.textChanged.connect(self.filtrerTableau)
         # Bouton ouvrir
         self.btn_ouvrir.clicked.connect(self.ouvrirDocumentSelectionne)
         self.btn_telecharger.clicked.connect(self.telechargerDocument)
@@ -267,16 +270,91 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(right_panel, stretch=2)
         self.chargerDocuments()
 
+    def creerFiltresRecherche(self, parent_layout):
+        """Crée les champs de recherche multicritère au-dessus du tableau."""
+        parent_layout.addWidget(QLabel("<b>Recherche multicritère</b>"))
+
+        ligne_principale = QHBoxLayout()
+        self.search_titre = QLineEdit()
+        self.search_titre.setPlaceholderText("Titre")
+        self.search_auteur = QLineEdit()
+        self.search_auteur.setPlaceholderText("Auteur")
+        self.search_mots_cles = QLineEdit()
+        self.search_mots_cles.setPlaceholderText("Mots-clés, séparés par virgules")
+        ligne_principale.addWidget(self.search_titre)
+        ligne_principale.addWidget(self.search_auteur)
+        ligne_principale.addWidget(self.search_mots_cles)
+        parent_layout.addLayout(ligne_principale)
+
+        ligne_secondaire = QHBoxLayout()
+        self.search_categories = CheckableComboBox("Toutes les catégories")
+        self.search_categories.add_checkable_items(self.logic.list_categories())
+        self.search_ressource = QLineEdit()
+        self.search_ressource.setPlaceholderText("Ressource")
+        ligne_secondaire.addWidget(self.search_categories)
+        ligne_secondaire.addWidget(self.search_ressource)
+        parent_layout.addLayout(ligne_secondaire)
+
+        ligne_dates = QHBoxLayout()
+        self.search_date_min_active = QCheckBox("Date min")
+        self.search_date_min = QDateEdit(QDate.currentDate().addYears(-1))
+        self.search_date_min.setCalendarPopup(True)
+        self.search_date_min.setDisplayFormat("yyyy-MM-dd")
+        self.search_date_min.setEnabled(False)
+
+        self.search_date_max_active = QCheckBox("Date max")
+        self.search_date_max = QDateEdit(QDate.currentDate())
+        self.search_date_max.setCalendarPopup(True)
+        self.search_date_max.setDisplayFormat("yyyy-MM-dd")
+        self.search_date_max.setEnabled(False)
+
+        self.btn_rechercher = QPushButton("Rechercher")
+        self.btn_reset_search = QPushButton("Réinitialiser")
+
+        ligne_dates.addWidget(self.search_date_min_active)
+        ligne_dates.addWidget(self.search_date_min)
+        ligne_dates.addWidget(self.search_date_max_active)
+        ligne_dates.addWidget(self.search_date_max)
+        ligne_dates.addStretch()
+        ligne_dates.addWidget(self.btn_rechercher)
+        ligne_dates.addWidget(self.btn_reset_search)
+        parent_layout.addLayout(ligne_dates)
+
+        self.search_date_min_active.toggled.connect(self.search_date_min.setEnabled)
+        self.search_date_max_active.toggled.connect(self.search_date_max.setEnabled)
+        self.btn_rechercher.clicked.connect(self.rechercherDocuments)
+        self.btn_reset_search.clicked.connect(self.reinitialiserRecherche)
+
+        for champ in (
+            self.search_titre,
+            self.search_auteur,
+            self.search_mots_cles,
+            self.search_ressource,
+        ):
+            champ.returnPressed.connect(self.rechercherDocuments)
+
     def chargerDocuments(self):
         """Charge les documents depuis SQLite dans le tableau."""
-        # Récupère les documents via la couche logique puis les affiche dans le tableau.
+        self.chargerDocumentsAvecFiltres(SearchFilters())
+
+    def chargerDocumentsAvecFiltres(self, filters, afficher_message_aucun=False):
+        """Récupère les documents via la couche logique puis les affiche dans le tableau."""
         try:
-            documents = self.logic.search_documents(SearchFilters())
+            documents = self.logic.search_documents(filters)
+            self.afficherDocuments(documents)
+            if afficher_message_aucun and not documents:
+                QMessageBox.information(self, "Recherche", "Aucun document trouvé")
+        except ValidationError as exc:
+            QMessageBox.warning(self, "Validation", str(exc))
         except Exception as exc:
             QMessageBox.critical(self, "Erreur", f"Impossible de charger les documents : {exc}")
-            return
 
+    def afficherDocuments(self, documents):
+        """Affiche une liste de documents déjà formatée dans le tableau."""
         self.table.setRowCount(0)
+        self.table.clearSelection()
+        self.viderDetails()
+
         for document in documents:
             row = self.table.rowCount()
             self.table.insertRow(row)
@@ -292,6 +370,55 @@ class MainWindow(QMainWindow):
                 item = QTableWidgetItem(str(valeur))
                 item.setData(Qt.ItemDataRole.UserRole, document)
                 self.table.setItem(row, col, item)
+
+    def construireFiltresRecherche(self):
+        """Construit l'objet SearchFilters à partir des champs de l'interface."""
+        return SearchFilters(
+            titre=self.search_titre.text(),
+            auteur=self.search_auteur.text(),
+            categories=self.search_categories.checked_items(),
+            mots_cles=self.search_mots_cles.text(),
+            date_min=(
+                self.search_date_min.date().toString("yyyy-MM-dd")
+                if self.search_date_min_active.isChecked()
+                else None
+            ),
+            date_max=(
+                self.search_date_max.date().toString("yyyy-MM-dd")
+                if self.search_date_max_active.isChecked()
+                else None
+            ),
+            ressource=self.search_ressource.text(),
+        )
+
+    def rechercherDocuments(self):
+        """Lance une recherche multicritère via la couche métier."""
+        self.chargerDocumentsAvecFiltres(
+            self.construireFiltresRecherche(),
+            afficher_message_aucun=True,
+        )
+
+    def reinitialiserRecherche(self):
+        """Vide les filtres puis recharge tous les documents."""
+        self.search_titre.clear()
+        self.search_auteur.clear()
+        self.search_mots_cles.clear()
+        self.search_ressource.clear()
+        self.search_categories.clear_checked_items()
+
+        self.search_date_min_active.setChecked(False)
+        self.search_date_max_active.setChecked(False)
+        self.search_date_min.setEnabled(False)
+        self.search_date_max.setEnabled(False)
+
+        self.chargerDocuments()
+
+    def viderDetails(self):
+        self.info_titre.setText("Titre : -")
+        self.info_auteur.setText("Auteur : -")
+        self.info_date.setText("Date : -")
+        self.info_cat.setText("Catégorie : -")
+        self.desc_box.clear()
 
     def documentSelectionne(self):
         # Retourne le document complet associé à la ligne sélectionnée.
@@ -339,20 +466,8 @@ class MainWindow(QMainWindow):
         self.desc_box.setText(description or f"Aucune description pour : {titre}")
 
     def filtrerTableau(self):
-        """ Recherche dynamique dans le tableau """
-        # Cache les lignes qui ne correspondent pas au texte recherché.
-        filtre = self.search_bar.text().lower()
-        for row in range(self.table.rowCount()):
-            match = False
-            # On vérifie toutes les colonnes (Titre, Auteur, etc.)
-            for col in range(self.table.columnCount()):
-                item = self.table.item(row, col)
-                if item and filtre in item.text().lower():
-                    match = True
-                    break
-
-            # Cache ou montre la ligne selon le résultat
-            self.table.setRowHidden(row, not match)
+        """Compatibilité avec l'ancien nom : utilise maintenant le moteur métier."""
+        self.rechercherDocuments()
 
     def importDocument(self):
         # Ouvre la boîte de dialogue d'import et enregistre le document en base.
