@@ -296,13 +296,18 @@ class MainWindow(QMainWindow):
         if index.isValid():
             self.table.selectRow(index.row())
             self.afficherDetails(self.table.item(index.row(), 0))
-            menu.addAction("Ouvrir")
-            menu.addAction("Télécharger")
-            menu.addAction("Supprimer")
-            menu.addAction("Copier le chemin de la ressource")
+            action_ouvrir = menu.addAction("Ouvrir")
+            action_telecharger = menu.addAction("Télécharger")
+            action_supprimer = menu.addAction("Supprimer")
+            action_copier_ressource = menu.addAction("Copier le chemin de la ressource")
+            action_ouvrir.triggered.connect(self.ouvrirDocumentSelectionne)
+            action_telecharger.triggered.connect(self.telechargerDocument)
+            action_supprimer.triggered.connect(self.deleteDocument)
+            action_copier_ressource.triggered.connect(self.copierCheminRessourceSelectionne)
             menu.addSeparator()
 
-        menu.addAction("Ajouter un document")
+        action_ajouter = menu.addAction("Ajouter un document")
+        action_ajouter.triggered.connect(self.importDocument)
         return menu
 
     def creerFiltresRecherche(self, parent_layout):
@@ -510,6 +515,21 @@ class MainWindow(QMainWindow):
             if not chemin.exists() and legacy_data_path.exists():
                 chemin = legacy_data_path
         return chemin
+
+    def copierCheminRessourceSelectionne(self):
+        # Copie le chemin stocké en base pour le document sélectionné.
+        document = self.documentSelectionne()
+        if not document:
+            QMessageBox.warning(self, "Attention", "Veuillez sélectionner un document.")
+            return
+
+        ressource = document.get("ressource") or document.get("chemin_fichier")
+        if not ressource:
+            QMessageBox.warning(self, "Erreur", "Aucun chemin de ressource disponible.")
+            return
+
+        QApplication.clipboard().setText(str(ressource))
+        self.statusBar().showMessage("Chemin de la ressource copié", 3000)
 
     def afficherDetails(self, item):
         """ Met à jour la partie droite quand on clique sur le tableau """
