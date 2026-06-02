@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QApplication,
                              QHBoxLayout, QTableWidget, QTableWidgetItem, QLineEdit,
                              QLabel, QPushButton, QHeaderView, QDateEdit, QFileDialog,
                              QMessageBox, QTextEdit, QDialog, QFormLayout, QComboBox,
-                             QDialogButtonBox, QCheckBox)
+                             QDialogButtonBox, QCheckBox, QMenu)
 # Logique de base et signaux
 from PyQt6.QtCore import (Qt, QTimer, QObject, QDate, QEvent)
 # Pour le visuel
@@ -208,6 +208,7 @@ class MainWindow(QMainWindow):
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
         # On définit le mode de redimensionnement
         header = self.table.horizontalHeader()
@@ -273,6 +274,7 @@ class MainWindow(QMainWindow):
         # --- CONNEXIONS ---
         # Quand on clique sur une ligne du tableau
         self.table.itemClicked.connect(self.afficherDetails)
+        self.table.customContextMenuRequested.connect(self.afficherMenuContextuelDocument)
         # Bouton ouvrir
         self.btn_ouvrir.clicked.connect(self.ouvrirDocumentSelectionne)
         self.btn_telecharger.clicked.connect(self.telechargerDocument)
@@ -280,6 +282,28 @@ class MainWindow(QMainWindow):
         # On ajoute la partie droite au layout principal
         main_layout.addWidget(right_panel, stretch=2)
         self.chargerDocuments()
+
+    def afficherMenuContextuelDocument(self, position):
+        """Affiche le menu clic droit de la liste des documents."""
+        menu = self.creerMenuContextuelDocument(position)
+        menu.exec(self.table.viewport().mapToGlobal(position))
+
+    def creerMenuContextuelDocument(self, position):
+        """Prépare le menu contextuel et sélectionne la ligne ciblée si elle existe."""
+        index = self.table.indexAt(position)
+        menu = QMenu(self)
+
+        if index.isValid():
+            self.table.selectRow(index.row())
+            self.afficherDetails(self.table.item(index.row(), 0))
+            menu.addAction("Ouvrir")
+            menu.addAction("Télécharger")
+            menu.addAction("Supprimer")
+            menu.addAction("Copier le chemin de la ressource")
+            menu.addSeparator()
+
+        menu.addAction("Ajouter un document")
+        return menu
 
     def creerFiltresRecherche(self, parent_layout):
         """Crée les champs de recherche multicritère au-dessus du tableau."""
