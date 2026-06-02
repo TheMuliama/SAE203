@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from src.categories import AUTHORIZED_CATEGORIES
+from src.categories import AUTHORIZED_CATEGORIES, CATEGORY_BY_LOWER_NAME
 
 
 class SQLiteRepository:
@@ -419,10 +419,14 @@ class SQLiteRepository:
 
     def _get_or_create_category(self, conn: sqlite3.Connection, category: str) -> int:
         category = category.strip()
-        row = conn.execute('SELECT idCat FROM Categories WHERE nomCat = ?', (category,)).fetchone()
+        authorized_category = CATEGORY_BY_LOWER_NAME.get(category.lower())
+        if authorized_category is None:
+            raise ValueError(f"Catégorie non autorisée : {category}")
+
+        row = conn.execute('SELECT idCat FROM Categories WHERE nomCat = ?', (authorized_category,)).fetchone()
         if row:
             return int(row['idCat'])
-        cur = conn.execute('INSERT INTO Categories (nomCat) VALUES (?)', (category,))
+        cur = conn.execute('INSERT INTO Categories (nomCat) VALUES (?)', (authorized_category,))
         return int(cur.lastrowid)
 
     def _get_or_create_keyword(self, conn: sqlite3.Connection, keyword: str) -> int:
