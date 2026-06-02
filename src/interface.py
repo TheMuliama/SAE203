@@ -320,10 +320,29 @@ class MainWindow(QMainWindow):
         ligne_dates.addWidget(self.btn_reset_search)
         parent_layout.addLayout(ligne_dates)
 
+        ligne_tri = QHBoxLayout()
+        ligne_tri.addWidget(QLabel("Trier par :"))
+        self.search_sort_by = QComboBox()
+        self.search_sort_by.addItem("Date", "date")
+        self.search_sort_by.addItem("Titre", "titre")
+        self.search_sort_by.addItem("Auteur", "auteur")
+
+        self.search_sort_order = QComboBox()
+        self.search_sort_order.addItem("Décroissant", "desc")
+        self.search_sort_order.addItem("Croissant", "asc")
+
+        ligne_tri.addWidget(self.search_sort_by)
+        ligne_tri.addWidget(QLabel("Ordre :"))
+        ligne_tri.addWidget(self.search_sort_order)
+        ligne_tri.addStretch()
+        parent_layout.addLayout(ligne_tri)
+
         self.search_date_min_active.toggled.connect(self.search_date_min.setEnabled)
         self.search_date_max_active.toggled.connect(self.search_date_max.setEnabled)
         self.btn_rechercher.clicked.connect(self.rechercherDocuments)
         self.btn_reset_search.clicked.connect(self.reinitialiserRecherche)
+        self.search_sort_by.currentIndexChanged.connect(self.rechercherDocuments)
+        self.search_sort_order.currentIndexChanged.connect(self.rechercherDocuments)
 
         for champ in (
             self.search_titre,
@@ -389,6 +408,8 @@ class MainWindow(QMainWindow):
                 else None
             ),
             ressource=self.search_ressource.text(),
+            sort_by=self.search_sort_by.currentData(),
+            sort_order=self.search_sort_order.currentData(),
         )
 
     def rechercherDocuments(self):
@@ -410,6 +431,8 @@ class MainWindow(QMainWindow):
         self.search_date_max_active.setChecked(False)
         self.search_date_min.setEnabled(False)
         self.search_date_max.setEnabled(False)
+        self.search_sort_by.setCurrentIndex(0)
+        self.search_sort_order.setCurrentIndex(0)
 
         self.chargerDocuments()
 
