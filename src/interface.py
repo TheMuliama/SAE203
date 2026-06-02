@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 # Éléments d'interface
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QApplication,
                              QHBoxLayout, QTableWidget, QTableWidgetItem, QLineEdit,
                              QLabel, QPushButton, QHeaderView, QDateEdit, QFileDialog,
                              QMessageBox, QTextEdit, QDialog, QFormLayout, QComboBox,
@@ -16,7 +16,7 @@ from PyQt6.QtCore import (Qt, QTimer, QObject, QDate, QEvent)
 from PyQt6.QtGui import (QIcon, QPixmap, QColor, QAction, QStandardItem, QStandardItemModel)
 
 from src.database import build_repository
-from src.logic import DocumentInput, LogicService, SearchFilters, ValidationError
+from src.logic import DocumentInput, LogicService, SearchFilters, ValidationError, PreferencesDialog
 
 
 class CheckableComboBox(QComboBox):
@@ -174,7 +174,7 @@ class MainWindow(QMainWindow):
         self.logic = logic_service or LogicService(build_repository(self.project_root))
 
         # Création de la fenêtre
-        self.setWindowTitle("SAE 203 - Gestion documentaire")
+        self.setWindowTitle("SoweDrop")
         self.setWindowIcon(QIcon("pouce.png"))
         self.resize(1100, 700)
 
@@ -226,7 +226,7 @@ class MainWindow(QMainWindow):
         # Texte de la partie détails
         # Titre "Détails" stylisé
         self.details = QLabel("Fiche Détails")
-        self.details.setStyleSheet("font-size: 20px; font-weight: bold; color: white; margin-bottom: 10px;")
+        self.details.setStyleSheet("font-size: 20px; font-weight: bold; margin-bottom: 10px;")
         self.details.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_layout.addWidget(self.details)
 
@@ -451,35 +451,53 @@ class MainWindow(QMainWindow):
         """
         
         ######## Partie Fichier ########
-        self.actArchive = QAction(QIcon("assets/icons/papier.png"), "&Archive", self)
-        self.actArchive.setShortcut("Ctrl+R")
-        self.actArchive.setStatusTip("Archive des documents récents")
-        #self.actArchive.triggered.connect(self.importDocument)
+        # Archive
+        self.actArchive = QAction("&Corbeille", self)
+        self.actArchive.setShortcut("Ctrl+A")
+        self.actArchive.setStatusTip("Archive des documents récemment effacés")
+
+        # Préférences
+        self.actPref = QAction("&Préférences", self)
+        self.actPref.setShortcut("Ctrl+P")
+        self.actPref.setStatusTip("Préférences de l'utilisateur")
+        self.actPref.triggered.connect(self.ouvrirPreferences)
 
         # Quitter l'appli
-        self.actExit = QAction(QIcon("assets/icons/quitter.png"), "Quitter", self)
+        self.actExit = QAction("Quitter", self)
         self.actExit.setShortcut("Alt+F4")
         self.actExit.setStatusTip("Quitter")
         self.actExit.triggered.connect(self.quitApp)
 
         ####### Partie Édition ######
         # Exporter
-        self.actExport = QAction(QIcon("assets/icons/export.jpg"),"&Exporter", self)
+        self.actExport = QAction("&Exporter", self)
         self.actExport.setShortcut("Ctrl+E")
         self.actExport.setStatusTip("Exporter le document")
         self.actExport.triggered.connect(self.exportDocument)
 
         # Supprimer
-        self.actDelete = QAction(QIcon("assets/icons/delete.png"),"&Supprimer un document", self)
+        self.actDelete = QAction("&Supprimer un document", self)
         self.actDelete.setShortcut("Ctrl+D")
         self.actDelete.setStatusTip("Supprimer le document sélectionné")
         self.actDelete.triggered.connect(self.deleteDocument)
  
         ######## Partie Importer ########
-        self.actImport = QAction(QIcon("assets/icons/ouvrir.png"), "&Sélectionner un document...", self)
+        self.actImport = QAction("&Sélectionner un document...", self)
         self.actImport.setShortcut("Ctrl+O")
         self.actImport.setStatusTip("Importer un document depuis votre ordinateur")
         self.actImport.triggered.connect(self.importDocument)
+
+        ######## Partie Aide ########
+        # Guide
+        self.actGuide = QAction("&Guide utilisateur", self)
+        self.actGuide.setShortcut("Ctrl+G")
+        self.actGuide.setStatusTip("Guide utilisateur")
+
+        # Contact
+        self.actContact = QAction("&Contacter", self)
+        self.actContact.setShortcut("Ctrl+A")
+        self.actContact.setStatusTip("Contacter les développeurs")
+
 
 
     def createMenuBar(self):
@@ -492,20 +510,25 @@ class MainWindow(QMainWindow):
         file = menu.addMenu("&Fichier")
         file.addAction(self.actArchive)
         file.addSeparator()
-        file.addAction(self.actExport)
+        file.addAction(self.actPref)
         file.addSeparator()
         file.addAction(self.actExit)
 
         # Partie pour Édition
         edition = menu.addMenu("&Édition")
+        edition.addAction(self.actExport)
+        edition.addSeparator()
         edition.addAction(self.actDelete)
 
+        # Partie pour Importer
         import_menu = menu.addMenu("&Importer")
         import_menu.addAction(self.actImport)
 
-        file_menu = menu.addMenu("Aide")
-        file_menu.addAction("Guide")
-        file_menu.addAction("Contact")
+        # Partie Aide
+        help_menu = menu.addMenu("&Aide")
+        help_menu.addAction(self.actGuide)
+        help_menu.addSeparator()
+        help_menu.addAction(self.actContact)
 
 
     def quitApp(self):
@@ -589,3 +612,133 @@ class MainWindow(QMainWindow):
             self.desc_box.clear()
         except Exception as exc:
             QMessageBox.critical(self, "Erreur", f"Impossible de supprimer le document : {exc}")
+
+    def ouvrirPreferences(self):
+        dialog = PreferencesDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            reglages = dialog.get_preferences()
+            
+            # 1. Gestion de la taille de la police globale
+            font = self.font()
+            font.setPointSize(reglages["taille_police"])
+            # Utilisation sécurisée de l'instance globale de l'application
+            QApplication.instance().setFont(font) 
+
+            # 2. Gestion du Thème sur toute l'application
+            if reglages["theme"] == "Sombre":
+                self.appliquer_theme_sombre()
+            else:
+                self.appliquer_theme_clair()
+
+    def appliquer_theme_sombre(self):
+        # On inverse proprement toutes les couleurs en préservant les états de survol natifs
+        theme_sombre = """
+            /* Fenêtres principales, fenêtres de dialogue et conteneurs généraux */
+            QMainWindow, QDialog, .QWidget {
+                background-color: #1e1e1e;
+                color: #ffffff;
+            }
+            
+            /* Correction pour que TOUS les textes (y compris dans les Préférences) soient blancs */
+            QLabel, QRadioButton, QCheckBox {
+                color: #ffffff;
+            }
+            
+            /* --- BARRE DE MENU ET RECOUVREMENT --- */
+            QMenuBar {
+                background-color: #1e1e1e;
+                color: #ffffff;
+            }
+            /* Rétablissement de l'effet au survol de la souris sur la barre principale */
+            QMenuBar::item:selected {
+                background-color: #3d3d3d;
+                color: #ffffff;
+            }
+            QMenu {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #3f3f46;
+            }
+            /* Rétablissement de l'effet au survol de la souris sur les sous-menus */
+            QMenu::item:selected {
+                background-color: #2980b9;
+                color: #ffffff;
+            }
+            
+            /* --- TABLEAU MODE SOMBRE --- */
+            QTableWidget {
+                background-color: #252526;
+                gridline-color: #3f3f46;
+                color: #ffffff;
+            }
+            QHeaderView::section {
+                background-color: #2d2d30;
+                color: #ffffff;
+                border: 1px solid #3f3f46;
+            }
+            
+            /* --- ZONES DE SAISIE --- */
+            QLineEdit, QTextEdit, QSpinBox, QComboBox {
+                background-color: #2d2d30;
+                color: #ffffff;
+                border: 1px solid #555555;
+                padding: 5px;
+            }
+        """
+        QApplication.instance().setStyleSheet(theme_sombre)
+        self.statusBar().showMessage("Mode Sombre activé", 3000)
+
+    def appliquer_theme_clair(self):
+        # On rétablit EXACTEMENT les composants système d'origine (comme sur votre capture d'écran initiale)
+        theme_clair = """
+            QMainWindow, QDialog, .QWidget {
+                background-color: #f5f5f5;
+                color: #000000;
+            }
+            
+            QLabel, QRadioButton, QCheckBox {
+                color: #000000;
+            }
+            
+            /* --- BARRE DE MENU STANDARD --- */
+            QMenuBar {
+                background-color: #f5f5f5;
+                color: #000000;
+            }
+            QMenuBar::item:selected {
+                background-color: #e5e5e5;
+                color: #000000;
+            }
+            QMenu {
+                background-color: #ffffff;
+                color: #000000;
+                border: 1px solid #ccc;
+            }
+            QMenu::item:selected {
+                background-color: #3498db;
+                color: #ffffff;
+            }
+            
+            /* --- ZONES DE SAISIE --- */
+            QLineEdit, QTextEdit, QSpinBox, QComboBox {
+                background-color: #ffffff;
+                color: #000000;
+                border: 1px solid #ccc;
+                padding: 5px;
+            }
+            
+            /* --- REMISE À ZÉRO DU TABLEAU D'ORIGINE --- */
+            /* En laissant vide ici, le tableau reprend ses couleurs par défaut (gris clair et en-têtes natifs) */
+            QTableWidget {
+                background-color: #ffffff;
+                gridline-color: #dcdcdc;
+                color: #000000;
+            }
+            QHeaderView::section {
+                background-color: #e5e5e5;
+                color: #000000;
+                border: 1px solid #dcdcdc;
+            }
+        """
+        QApplication.instance().setStyleSheet(theme_clair)
+        self.statusBar().showMessage("Mode Clair activé", 3000)

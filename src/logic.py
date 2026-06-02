@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Protocol
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
+                             QRadioButton, QButtonGroup, QCheckBox, 
+                             QSpinBox, QPushButton, QFrame)
+from PyQt6.QtCore import Qt
 
 from src.categories import AUTHORIZED_CATEGORIES, CATEGORY_BY_LOWER_NAME
 
@@ -363,3 +367,95 @@ class LogicService:
     def _date_to_iso(value: date | None) -> str | None:
         """Retourne une date au format ISO YYYY-MM-DD."""
         return value.isoformat() if value else None
+    
+
+# preferences.py
+class PreferencesDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Paramètres de l'application")
+        self.setFixedWidth(450)
+        
+        layout = QVBoxLayout(self)
+        
+        # --- SECTION 1 : APPARENCE (Boutons Radio) ---
+        layout.addWidget(QLabel("<b>Apparence & Thème</b>"))
+        
+        # Groupe pour les boutons radio (pour qu'un seul soit sélectionné à la fois)
+        self.theme_group = QButtonGroup(self)
+        
+        theme_layout = QHBoxLayout()
+        self.radio_clair = QRadioButton("Mode Clair")
+        self.radio_sombre = QRadioButton("Mode Sombre")
+        
+        # Par défaut, on coche le mode sombre car ton appli l'est déjà (vu sur ta capture)
+        self.radio_sombre.setChecked(True) 
+        
+        self.theme_group.addButton(self.radio_clair)
+        self.theme_group.addButton(self.radio_sombre)
+        
+        theme_layout.addWidget(self.radio_clair)
+        theme_layout.addWidget(self.radio_sombre)
+        layout.addLayout(theme_layout)
+        
+        # Petite ligne de séparation visuelle
+        layout.addWidget(self.creer_separation())
+        
+        # --- SECTION 2 : ACCESSIBILITÉ ---
+        layout.addWidget(QLabel("<b>Accessibilité</b>"))
+        font_layout = QHBoxLayout()
+        font_layout.addWidget(QLabel("Taille de la police globale :"))
+        self.font_size_spin = QSpinBox()
+        self.font_size_spin.setRange(8, 15)
+        self.font_size_spin.setValue(10) # Valeur par défaut
+        self.font_size_spin.setSuffix(" pt")
+        font_layout.addWidget(self.font_size_spin)
+        layout.addLayout(font_layout)
+        
+        layout.addWidget(self.creer_separation())
+        
+        # --- SECTION 3 : COMPORTEMENT ---
+        layout.addWidget(QLabel("<b>Comportement & Sécurité</b>"))
+        self.check_remember = QCheckBox("Restaurer les documents ouverts au démarrage")
+        self.check_confirm = QCheckBox("Demander confirmation avant de supprimer un document")
+        self.check_confirm.setChecked(True)
+        
+        layout.addWidget(self.check_remember)
+        layout.addWidget(self.check_confirm)
+        
+        layout.addWidget(self.creer_separation())
+        
+        # --- BOUTONS DE SÉLECTION FINALE ---
+        btn_layout = QHBoxLayout()
+        self.btn_cancel = QPushButton("Annuler")
+        self.btn_save = QPushButton("Enregistrer")
+        self.btn_save.setStyleSheet("background-color: #2980b9;")
+        
+        self.btn_cancel.clicked.connect(self.reject)
+        self.btn_save.clicked.connect(self.accept)
+        
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.btn_cancel)
+        btn_layout.addWidget(self.btn_save)
+        layout.addLayout(btn_layout)
+
+    def creer_separation(self):
+        """ Crée une ligne grise discrète pour séparer les sections """
+        ligne = QFrame()
+        
+        # CORRECTION ICI : Utilisez QFrame.Shape.HLine et QFrame.Shadow.Sunken
+        ligne.setFrameShape(QFrame.Shape.HLine)
+        ligne.setFrameShadow(QFrame.Shadow.Sunken)
+        
+        ligne.setStyleSheet("background-color: #444; ")
+        return ligne
+
+    def get_preferences(self):
+        """ Récupère les choix pour les envoyer à la page principale """
+        theme_choisi = "Sombre" if self.radio_sombre.isChecked() else "Clair"
+        return {
+            "theme": theme_choisi,
+            "taille_police": self.font_size_spin.value(),
+            "restaurer_session": self.check_remember.isChecked(),
+            "confirmer_suppression": self.check_confirm.isChecked()
+        }
