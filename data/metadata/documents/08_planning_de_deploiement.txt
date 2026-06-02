@@ -5,7 +5,7 @@ auteur_nom: BADOR
 auteur_prenom: Manon
 auteur_matricule: RT003
 date_document: 2026-04-12
-ressource: documents/partage/planning_de_deploiement.xlsx
+ressource: data/documents/partage/planning_de_deploiement.xlsx
 type_fichier: XLSX
 stockage: partage
 statut: actif

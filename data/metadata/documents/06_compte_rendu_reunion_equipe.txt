@@ -5,7 +5,7 @@ auteur_nom: MOUNIAMA
 auteur_prenom: Lucas
 auteur_matricule: RT001
 date_document: 2026-04-10
-ressource: documents/partage/compte_rendu_reunion_equipe.docx
+ressource: data/documents/partage/compte_rendu_reunion_equipe.docx
 type_fichier: DOCX
 stockage: partage
 statut: actif

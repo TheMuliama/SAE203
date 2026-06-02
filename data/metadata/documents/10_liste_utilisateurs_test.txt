@@ -5,7 +5,7 @@ auteur_nom: MOUNIAMA
 auteur_prenom: Lucas
 auteur_matricule: RT001
 date_document: 2026-04-15
-ressource: documents/local/liste_utilisateurs_test.xlsx
+ressource: data/documents/local/liste_utilisateurs_test.xlsx
 type_fichier: XLSX
 stockage: local
 statut: actif

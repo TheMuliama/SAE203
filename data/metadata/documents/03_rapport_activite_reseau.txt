@@ -5,7 +5,7 @@ auteur_nom: AMOURANI
 auteur_prenom: Fabien
 auteur_matricule: RT002
 date_document: 2026-04-05
-ressource: documents/partage/rapport_activite_reseau.docx
+ressource: data/documents/partage/rapport_activite_reseau.docx
 type_fichier: DOCX
 stockage: partage
 statut: actif

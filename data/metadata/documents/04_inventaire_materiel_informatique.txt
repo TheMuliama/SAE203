@@ -5,7 +5,7 @@ auteur_nom: BADOR
 auteur_prenom: Manon
 auteur_matricule: RT003
 date_document: 2026-04-07
-ressource: documents/partage/inventaire_materiel_informatique.xlsx
+ressource: data/documents/partage/inventaire_materiel_informatique.xlsx
 type_fichier: XLSX
 stockage: partage
 statut: actif
