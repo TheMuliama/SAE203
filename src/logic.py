@@ -225,11 +225,11 @@ class LogicService:
         titre = self._clean_text(filters.titre, allow_empty=True)
         auteur = self._clean_text(filters.auteur, allow_empty=True)
         ressource = self._clean_text(filters.ressource, allow_empty=True)
-        categories = self._normalize_string_list(filters.categories)
+        categories = self._normalize_authorized_categories(filters.categories)
         mots_cles = self._normalize_string_list(filters.mots_cles)
 
-        date_min = self._parse_date(filters.date_min) if filters.date_min else None
-        date_max = self._parse_date(filters.date_max) if filters.date_max else None
+        date_min = self._parse_optional_search_date(filters.date_min, "La date minimale")
+        date_max = self._parse_optional_search_date(filters.date_max, "La date maximale")
 
         if date_min and date_max and date_min > date_max:
             raise ValidationError(
@@ -362,6 +362,19 @@ class LogicService:
             return datetime.strptime(text, "%Y-%m-%d").date()
         except ValueError:
             return None
+
+    def _parse_optional_search_date(self, value: str | date | None, label: str) -> date | None:
+        if value is None:
+            return None
+
+        if isinstance(value, str) and not value.strip():
+            return None
+
+        parsed_date = self._parse_date(value)
+        if parsed_date is None:
+            raise ValidationError(f"{label} doit être valide (YYYY-MM-DD).")
+
+        return parsed_date
 
     @staticmethod
     def _date_to_iso(value: date | None) -> str | None:
