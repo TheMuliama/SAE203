@@ -130,6 +130,21 @@ Quand l'utilisateur change le tri dans l'interface, `SearchFilters` conserve les
 
 Si une valeur de tri invalide arrive côté logique métier, `LogicService` revient sur ces valeurs sûres. C'est le fallback de tri.
 
+## Menu clic droit des documents
+
+Le menu contextuel de la liste est géré dans `src/interface.py`.
+
+Le tableau utilise la politique `CustomContextMenu`, puis appelle `afficherMenuContextuelDocument()` quand l'utilisateur fait un clic droit.
+
+La méthode `creerMenuContextuelDocument()` prépare le menu :
+
+- si le clic vise une ligne, la ligne est sélectionnée et la fiche de détails est mise à jour ;
+- les actions `Ouvrir`, `Télécharger`, `Supprimer` et `Copier le chemin de la ressource` réutilisent les méthodes existantes ;
+- l'action `Ajouter un document` reste disponible dans tous les cas ;
+- si le clic vise une zone vide, la sélection est vidée et seules les actions qui ne dépendent pas d'un document sont affichées.
+
+Cette organisation évite de dupliquer la logique des boutons. Le menu clic droit est seulement une autre façon de déclencher les mêmes comportements.
+
 ## Validation des filtres
 
 `LogicService` valide et normalise les filtres avant de les envoyer à `SQLiteRepository`.

@@ -11,6 +11,7 @@ SoweDrop est une application desktop de gestion documentaire développée en Pyt
 - logique `OR` entre plusieurs catégories ou plusieurs mots-clés ;
 - tri par date, titre ou auteur, en ordre croissant ou décroissant ;
 - affichage d'une fiche de détails ;
+- menu clic droit sur la liste des documents ;
 - ouverture, téléchargement et suppression logique d'un document.
 
 ## Lancement
@@ -59,6 +60,8 @@ Deux guides sont disponibles :
 - [Guide développeur](documentation/guide_developpeur.md) : comprendre l'architecture, le code et le moteur de recherche.
 
 Le tri des résultats est documenté dans les deux guides. Il modifie uniquement l'ordre d'affichage des documents déjà trouvés : il ne remplace pas le filtrage multicritère.
+
+Le menu clic droit de la liste des documents est aussi décrit dans les guides. Il donne accès aux actions principales sans remplacer les boutons déjà visibles dans l'interface.
 
 ## Vérification
 

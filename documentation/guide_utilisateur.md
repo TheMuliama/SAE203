@@ -102,6 +102,20 @@ Après avoir sélectionné une ligne :
 
 Si le fichier n'existe pas sur le disque, l'application affiche un message d'erreur.
 
+## Utiliser le menu clic droit
+
+Un clic droit sur une ligne de la liste sélectionne automatiquement le document et ouvre un menu avec les actions principales :
+
+- `Ouvrir` ;
+- `Télécharger` ;
+- `Supprimer` ;
+- `Copier le chemin de la ressource` ;
+- `Ajouter un document`.
+
+L'action `Copier le chemin de la ressource` place dans le presse-papiers le chemin enregistré pour le document. Ce chemin est utile pour retrouver le fichier dans le dossier `data/documents/`.
+
+Si le clic droit est fait dans une zone vide de la liste, aucun document n'est sélectionné. Dans ce cas, le menu affiche seulement `Ajouter un document`.
+
 ## Ajouter un document
 
 Le menu `Importer` permet d'ajouter un document.
