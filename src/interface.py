@@ -305,6 +305,10 @@ class MainWindow(QMainWindow):
             action_supprimer.triggered.connect(self.deleteDocument)
             action_copier_ressource.triggered.connect(self.copierCheminRessourceSelectionne)
             menu.addSeparator()
+        else:
+            self.table.clearSelection()
+            self.table.setCurrentCell(-1, -1)
+            self.viderDetails()
 
         action_ajouter = menu.addAction("Ajouter un document")
         action_ajouter.triggered.connect(self.importDocument)
