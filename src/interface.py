@@ -281,7 +281,7 @@ class MainWindow(QMainWindow):
 
         # On ajoute la partie droite au layout principal
         main_layout.addWidget(right_panel, stretch=2)
-        self.chargerDocuments()
+        self.afficherTableauVide()
 
     def afficherMenuContextuelDocument(self, position):
         """Affiche le menu clic droit de la liste des documents."""
@@ -400,6 +400,10 @@ class MainWindow(QMainWindow):
         """Charge les documents depuis SQLite dans le tableau."""
         self.chargerDocumentsAvecFiltres(SearchFilters())
 
+    def afficherTableauVide(self):
+        """Remet la liste dans son état initial, sans lancer de recherche."""
+        self.afficherDocuments([])
+
     def chargerDocumentsAvecFiltres(self, filters, afficher_message_aucun=False):
         """Récupère les documents via la couche logique puis les affiche dans le tableau."""
         try:
@@ -464,7 +468,7 @@ class MainWindow(QMainWindow):
         )
 
     def reinitialiserRecherche(self):
-        """Vide les filtres puis recharge tous les documents."""
+        """Vide les filtres puis remet la liste dans son état initial."""
         # On remet l'écran dans le même état que le chargement initial.
         self.search_titre.clear()
         self.search_auteur.clear()
@@ -475,10 +479,16 @@ class MainWindow(QMainWindow):
         self.search_date_max_active.setChecked(False)
         self.search_date_min.setEnabled(False)
         self.search_date_max.setEnabled(False)
+
+        # Le reset change les menus de tri sans lancer une recherche automatique.
+        sort_by_was_blocked = self.search_sort_by.blockSignals(True)
+        sort_order_was_blocked = self.search_sort_order.blockSignals(True)
         self.search_sort_by.setCurrentIndex(0)
         self.search_sort_order.setCurrentIndex(0)
+        self.search_sort_by.blockSignals(sort_by_was_blocked)
+        self.search_sort_order.blockSignals(sort_order_was_blocked)
 
-        self.chargerDocuments()
+        self.afficherTableauVide()
 
     def viderDetails(self):
         self.info_titre.setText("Titre : -")

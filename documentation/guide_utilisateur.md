@@ -13,7 +13,7 @@ Depuis le dossier du projet, lancez :
 L'application ouvre une fenêtre avec :
 
 - une zone de recherche en haut à gauche ;
-- une liste de documents au centre ;
+- une liste de documents au centre, vide au démarrage ;
 - une fiche de détails à droite ;
 - des boutons pour ouvrir ou télécharger le document sélectionné.
 
@@ -29,7 +29,7 @@ La recherche permet de filtrer les documents avec plusieurs critères :
 
 Pour lancer la recherche, remplissez les champs souhaités puis cliquez sur `Rechercher`.
 
-Les champs vides sont ignorés. Si aucun champ n'est rempli, tous les documents sont affichés.
+Les champs vides sont ignorés. Si vous cliquez sur `Rechercher` sans remplir de champ, tous les documents sont affichés.
 
 ## Comprendre la logique des filtres
 
@@ -77,7 +77,7 @@ Le bouton `Réinitialiser` :
 - décoche les catégories ;
 - désactive les dates ;
 - remet le tri par défaut ;
-- affiche de nouveau tous les documents.
+- vide la liste des documents.
 
 ## Lire la fiche de détails
 

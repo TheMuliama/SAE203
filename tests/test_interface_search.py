@@ -60,6 +60,11 @@ class InterfaceSearchTest(unittest.TestCase):
         self.fail(f"Catégorie introuvable dans l'interface : {category}")
 
     def test_chargement_initial(self):
+        self.assertEqual(self.window.table.rowCount(), 0)
+
+    def test_recherche_sans_filtre_affiche_tous_les_documents(self):
+        self.window.rechercherDocuments()
+
         self.assertEqual(self.window.table.rowCount(), 12)
         self.assertEqual(self.window.table.item(0, 2).text(), "2026-04-18")
 
@@ -85,7 +90,7 @@ class InterfaceSearchTest(unittest.TestCase):
 
         self.window.reinitialiserRecherche()
 
-        self.assertEqual(self.window.table.rowCount(), 12)
+        self.assertEqual(self.window.table.rowCount(), 0)
         self.assertEqual(self.window.search_titre.text(), "")
         self.assertEqual(self.window.search_auteur.text(), "")
         self.assertEqual(self.window.search_mots_cles.text(), "")
@@ -94,6 +99,8 @@ class InterfaceSearchTest(unittest.TestCase):
         self.assertEqual(self.window.search_sort_order.currentData(), "desc")
 
     def test_tri_par_date_decroissante_par_defaut(self):
+        self.window.rechercherDocuments()
+
         self.assertEqual(self.window.search_sort_by.currentData(), "date")
         self.assertEqual(self.window.search_sort_order.currentData(), "desc")
         self.assertEqual(self.table_dates()[0], "2026-04-18")
