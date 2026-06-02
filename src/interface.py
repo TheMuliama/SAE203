@@ -240,7 +240,18 @@ class MainWindow(QMainWindow):
         self.info_auteur = QLabel("Auteur : -")
         self.info_date = QLabel("Date : -")
         self.info_cat = QLabel("Catégorie : -")
-        for lbl in [self.info_titre, self.info_auteur, self.info_date, self.info_cat]:
+        self.info_ressource = QLabel("Ressource : -")
+        self.info_mots_cles = QLabel("Mots-clés : -")
+        self.info_ressource.setWordWrap(True)
+        self.info_mots_cles.setWordWrap(True)
+        for lbl in [
+            self.info_titre,
+            self.info_auteur,
+            self.info_date,
+            self.info_cat,
+            self.info_ressource,
+            self.info_mots_cles,
+        ]:
             right_layout.addWidget(lbl)
 
         # Zone Description (Widget séparé)
@@ -289,10 +300,7 @@ class MainWindow(QMainWindow):
         ligne_secondaire = QHBoxLayout()
         self.search_categories = CheckableComboBox("Toutes les catégories")
         self.search_categories.add_checkable_items(self.logic.list_categories())
-        self.search_ressource = QLineEdit()
-        self.search_ressource.setPlaceholderText("Ressource")
         ligne_secondaire.addWidget(self.search_categories)
-        ligne_secondaire.addWidget(self.search_ressource)
         parent_layout.addLayout(ligne_secondaire)
 
         ligne_dates = QHBoxLayout()
@@ -348,7 +356,6 @@ class MainWindow(QMainWindow):
             self.search_titre,
             self.search_auteur,
             self.search_mots_cles,
-            self.search_ressource,
         ):
             champ.returnPressed.connect(self.rechercherDocuments)
 
@@ -407,7 +414,6 @@ class MainWindow(QMainWindow):
                 if self.search_date_max_active.isChecked()
                 else None
             ),
-            ressource=self.search_ressource.text(),
             sort_by=self.search_sort_by.currentData(),
             sort_order=self.search_sort_order.currentData(),
         )
@@ -424,7 +430,6 @@ class MainWindow(QMainWindow):
         self.search_titre.clear()
         self.search_auteur.clear()
         self.search_mots_cles.clear()
-        self.search_ressource.clear()
         self.search_categories.clear_checked_items()
 
         self.search_date_min_active.setChecked(False)
@@ -441,6 +446,8 @@ class MainWindow(QMainWindow):
         self.info_auteur.setText("Auteur : -")
         self.info_date.setText("Date : -")
         self.info_cat.setText("Catégorie : -")
+        self.info_ressource.setText("Ressource : -")
+        self.info_mots_cles.setText("Mots-clés : -")
         self.desc_box.clear()
 
     def documentSelectionne(self):
@@ -485,6 +492,10 @@ class MainWindow(QMainWindow):
         self.info_date.setText(f"Date : {date}")
         self.info_cat.setText(f"Catégorie : {cat}")
         document = self.documentSelectionne()
+        ressource = document.get("ressource") if document else ""
+        mots_cles = ", ".join(document.get("mots_cles") or []) if document else ""
+        self.info_ressource.setText(f"Ressource : {ressource or '-'}")
+        self.info_mots_cles.setText(f"Mots-clés : {mots_cles or '-'}")
         description = document.get("description") if document else ""
         self.desc_box.setText(description or f"Aucune description pour : {titre}")
 
