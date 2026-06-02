@@ -222,12 +222,15 @@ class LogicService:
 
     def _prepare_search_filters(self, filters: SearchFilters) -> dict[str, Any]:
         """Transforme les filtres de l'interface en paramètres utilisables par database.py."""
+        # Chaque champ est nettoyé ici pour garder l'interface simple.
         titre = self._clean_text(filters.titre, allow_empty=True)
         auteur = self._clean_text(filters.auteur, allow_empty=True)
         ressource = self._clean_text(filters.ressource, allow_empty=True)
+        # Les catégories sont validées contre la liste officielle du projet.
         categories = self._normalize_authorized_categories(filters.categories)
         mots_cles = self._normalize_string_list(filters.mots_cles)
 
+        # Les dates vides sont ignorées, les dates mal formées sont refusées.
         date_min = self._parse_optional_search_date(filters.date_min, "La date minimale")
         date_max = self._parse_optional_search_date(filters.date_max, "La date maximale")
 
@@ -240,6 +243,7 @@ class LogicService:
         if sort_by not in self.ALLOWED_SORT_FIELDS:
             sort_by = "date"
 
+        # Fallback de tri : une valeur inconnue revient sur l'ordre par défaut.
         sort_order = filters.sort_order.lower().strip() if filters.sort_order else "desc"
         if sort_order not in self.ALLOWED_SORT_ORDER:
             sort_order = "desc"
@@ -332,6 +336,7 @@ class LogicService:
         normalized: list[str] = []
         unknown: list[str] = []
 
+        # On conserve l'écriture officielle des catégories, même si l'utilisateur change la casse.
         for category in categories:
             authorized_category = CATEGORY_BY_LOWER_NAME.get(category.lower())
             if authorized_category is None:
@@ -364,6 +369,7 @@ class LogicService:
             return None
 
     def _parse_optional_search_date(self, value: str | date | None, label: str) -> date | None:
+        # Pour la recherche, une date vide signifie simplement "pas de filtre".
         if value is None:
             return None
 

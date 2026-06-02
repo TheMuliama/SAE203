@@ -27,6 +27,7 @@ class SQLiteRepository:
         if not self.db_path.exists():
             self.db_path.touch()
 
+        # Si la base est neuve, on applique le schéma SQL du projet.
         if self.schema_path and self.schema_path.exists():
             with self._connect() as conn:
                 has_documents = conn.execute(
@@ -41,6 +42,7 @@ class SQLiteRepository:
         self.seed_from_metadata_if_empty()
 
     def _ensure_resource_paths_inside_data(self) -> None:
+        # Migration douce : les anciens chemins "documents/..." deviennent "data/documents/...".
         with self._connect() as conn:
             has_documents = conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='Documents'"
@@ -79,6 +81,7 @@ class SQLiteRepository:
             conn.commit()
 
     def seed_from_metadata_if_empty(self) -> None:
+        # Les fichiers texte servent de jeu de métadonnées initial pour une base vide.
         metadata_dir = self.project_root / 'data' / 'metadata' / 'documents'
         if not metadata_dir.exists():
             return
@@ -217,6 +220,7 @@ class SQLiteRepository:
             conn.commit()
 
     def search_documents(self, prepared_filters: dict[str, Any]) -> list[dict[str, Any]]:
+        # Les champs remplis ajoutent des conditions ; les champs vides sont ignorés.
         where = ["d.statut != 'supprime'"]
         params: list[Any] = []
 
@@ -242,6 +246,7 @@ class SQLiteRepository:
 
         categories = prepared_filters.get('categories_exact_or') or []
         if categories:
+            # Plusieurs catégories sont combinées en OR grâce au IN (...).
             placeholders = ','.join('?' for _ in categories)
             where.append(
                 f"""EXISTS (
@@ -255,6 +260,7 @@ class SQLiteRepository:
 
         keywords = prepared_filters.get('mots_cles_like_or') or []
         if keywords:
+            # Plusieurs mots-clés sont combinés en OR, avec une recherche partielle.
             like_parts = []
             for keyword in keywords:
                 like_parts.append('LOWER(m.mot) LIKE ?')
@@ -298,6 +304,7 @@ class SQLiteRepository:
         """
 
         with self._connect() as conn:
+            # Les paramètres sont passés séparément pour éviter l'injection SQL.
             rows = conn.execute(sql, params).fetchall()
             return [self._hydrate_document_row(conn, row) for row in rows]
 

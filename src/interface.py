@@ -285,6 +285,7 @@ class MainWindow(QMainWindow):
         """Crée les champs de recherche multicritère au-dessus du tableau."""
         parent_layout.addWidget(QLabel("<b>Recherche multicritère</b>"))
 
+        # Première ligne : les recherches textuelles les plus utilisées.
         ligne_principale = QHBoxLayout()
         self.search_titre = QLineEdit()
         self.search_titre.setPlaceholderText("Titre")
@@ -297,12 +298,14 @@ class MainWindow(QMainWindow):
         ligne_principale.addWidget(self.search_mots_cles)
         parent_layout.addLayout(ligne_principale)
 
+        # Les catégories sont cochables pour permettre une logique OR entre elles.
         ligne_secondaire = QHBoxLayout()
         self.search_categories = CheckableComboBox("Toutes les catégories")
         self.search_categories.add_checkable_items(self.logic.list_categories())
         ligne_secondaire.addWidget(self.search_categories)
         parent_layout.addLayout(ligne_secondaire)
 
+        # Les dates sont optionnelles : la case active ou ignore le filtre.
         ligne_dates = QHBoxLayout()
         self.search_date_min_active = QCheckBox("Date min")
         self.search_date_min = QDateEdit(QDate.currentDate().addYears(-1))
@@ -328,6 +331,7 @@ class MainWindow(QMainWindow):
         ligne_dates.addWidget(self.btn_reset_search)
         parent_layout.addLayout(ligne_dates)
 
+        # Le tri est envoyé au moteur avec les autres filtres de recherche.
         ligne_tri = QHBoxLayout()
         ligne_tri.addWidget(QLabel("Trier par :"))
         self.search_sort_by = QComboBox()
@@ -399,6 +403,7 @@ class MainWindow(QMainWindow):
 
     def construireFiltresRecherche(self):
         """Construit l'objet SearchFilters à partir des champs de l'interface."""
+        # L'interface ne fait pas de SQL : elle prépare seulement les filtres métier.
         return SearchFilters(
             titre=self.search_titre.text(),
             auteur=self.search_auteur.text(),
@@ -427,6 +432,7 @@ class MainWindow(QMainWindow):
 
     def reinitialiserRecherche(self):
         """Vide les filtres puis recharge tous les documents."""
+        # On remet l'écran dans le même état que le chargement initial.
         self.search_titre.clear()
         self.search_auteur.clear()
         self.search_mots_cles.clear()
@@ -495,6 +501,7 @@ class MainWindow(QMainWindow):
         self.info_date.setText(f"Date : {date}")
         self.info_cat.setText(f"Catégorie : {cat}")
         document = self.documentSelectionne()
+        # Les informations longues restent dans la fiche détail pour garder le tableau lisible.
         ressource = document.get("ressource") if document else ""
         mots_cles = ", ".join(document.get("mots_cles") or []) if document else ""
         self.info_ressource.setText(f"Ressource : {ressource or '-'}")
