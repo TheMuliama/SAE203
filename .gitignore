@@ -7,3 +7,7 @@ venv/
 data/*.db
 .codex
 .codex/
+
+# Fichiers privés et cache local
+/data/private/sftp_config.json
+/data/documents/cache/

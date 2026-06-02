@@ -5,18 +5,45 @@ import subprocess
 from pathlib import Path
 
 # Éléments d'interface
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QApplication,
-                             QHBoxLayout, QTableWidget, QTableWidgetItem, QLineEdit,
-                             QLabel, QPushButton, QHeaderView, QDateEdit, QFileDialog,
-                             QMessageBox, QTextEdit, QDialog, QFormLayout, QComboBox,
-                             QDialogButtonBox, QCheckBox, QMenu)
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDateEdit,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
 # Logique de base et signaux
-from PyQt6.QtCore import (Qt, QTimer, QObject, QDate, QEvent)
+from PyQt6.QtCore import QDate, QEvent, Qt
+
 # Pour le visuel
-from PyQt6.QtGui import (QIcon, QPixmap, QColor, QAction, QStandardItem, QStandardItemModel)
+from PyQt6.QtGui import QAction, QIcon, QStandardItem, QStandardItemModel
 
 from src.database import build_repository
-from src.logic import DocumentInput, LogicService, SearchFilters, ValidationError, PreferencesDialog
+from src.logic import (
+    DocumentInput,
+    LogicService,
+    PreferencesDialog,
+    SearchFilters,
+    ValidationError,
+)
+from src.sftp_storage import SftpStorage, SftpStorageError, is_sftp_resource
 
 
 class CheckableComboBox(QComboBox):
@@ -64,20 +91,17 @@ class CheckableComboBox(QComboBox):
         if watched == self.view().viewport():
             if event.type() == QEvent.Type.MouseButtonPress:
                 return True
-
             if event.type() == QEvent.Type.MouseButtonRelease:
                 index = self.view().indexAt(event.position().toPoint())
                 if index.isValid():
                     self._toggle_item(index)
                 return True
-
         return super().eventFilter(watched, event)
 
     def _toggle_item(self, index):
         item = self._items_model.itemFromIndex(index)
         if not item:
             return
-
         new_state = (
             Qt.CheckState.Unchecked
             if item.checkState() == Qt.CheckState.Checked
@@ -105,6 +129,7 @@ class AddDocumentDialog(QDialog):
         layout.addWidget(header)
 
         form = QFormLayout()
+
         self.titre_input = QLineEdit()
         self.titre_input.setPlaceholderText("Saisissez le titre...")
 
@@ -136,10 +161,11 @@ class AddDocumentDialog(QDialog):
         form.addRow("Catégories :", self.cat_input)
         form.addRow("Description :", self.desc_input)
         form.addRow(self.file_button, self.file_label)
-
         layout.addLayout(form)
 
-        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Ajouter")
         self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Annuler")
         self.buttons.accepted.connect(self.accept)
@@ -169,18 +195,18 @@ class AddDocumentDialog(QDialog):
 
         self.selected_file = file_path
         self.file_label.setText(Path(file_path).name)
+
         if not self.titre_input.text().strip():
             self.titre_input.setText(Path(file_path).stem.replace("_", " ").strip())
 
 
 class MainWindow(QMainWindow):
     def __init__(self, logic_service=None, project_root=None):
-        # Initialise la fenêtre principale et prépare les services utilisés par l'interface.
         super().__init__()
+
         self.project_root = Path(project_root or Path(__file__).resolve().parent.parent)
         self.logic = logic_service or LogicService(build_repository(self.project_root))
 
-        # Création de la fenêtre
         self.setWindowTitle("SoweDrop")
         self.setWindowIcon(QIcon("pouce.png"))
         self.resize(1100, 700)
@@ -188,14 +214,10 @@ class MainWindow(QMainWindow):
         self.createActions()
         self.createMenuBar()
 
-        # Widget central
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-
-        # Layout principal horizontal
         main_layout = QHBoxLayout(central_widget)
 
-        # On crée un conteneur pour la partie gauche de l'appli
         left_container = QWidget()
         left_layout = QVBoxLayout(left_container)
 
@@ -203,40 +225,29 @@ class MainWindow(QMainWindow):
 
         self.table = QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["Titre", "Auteur", "Date", "Catégorie"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        left_layout.addWidget(self.table)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
-        # On définit le mode de redimensionnement
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch) # Titre prend la place
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive) # Auteur réglable
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive) # Date petite
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive) # Catégorie petite
-        #self.table.setColumnWidth(3, 100) # Largeur fixe pour Date
-        #self.table.setColumnWidth(7, 200) # Largeur fixe pour Catégorie
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
 
-        # Ajout de la partie gauche avec un gros stretch (4) pour qu'elle soit longue
+        left_layout.addWidget(self.table)
         main_layout.addWidget(left_container, stretch=4)
 
-
-        # On crée la partie droite (détails)
         right_panel = QWidget()
-        #right_panel.setFixedWidth(300)
         right_panel.setStyleSheet("border-left: 1px solid #ddd;")
         right_layout = QVBoxLayout(right_panel)
 
-        # Texte de la partie détails
-        # Titre "Détails" stylisé
         self.details = QLabel("Fiche Détails")
         self.details.setStyleSheet("font-size: 20px; font-weight: bold; margin-bottom: 10px;")
         self.details.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_layout.addWidget(self.details)
 
-        # Labels pour les infos (on les garde en attributs self pour les modifier plus tard)
         self.info_titre = QLabel("Titre : -")
         self.info_auteur = QLabel("Auteur : -")
         self.info_date = QLabel("Date : -")
@@ -245,7 +256,8 @@ class MainWindow(QMainWindow):
         self.info_mots_cles = QLabel("Mots-clés : -")
         self.info_ressource.setWordWrap(True)
         self.info_mots_cles.setWordWrap(True)
-        for lbl in [
+
+        for label in [
             self.info_titre,
             self.info_auteur,
             self.info_date,
@@ -253,17 +265,14 @@ class MainWindow(QMainWindow):
             self.info_ressource,
             self.info_mots_cles,
         ]:
-            right_layout.addWidget(lbl)
+            right_layout.addWidget(label)
 
-        # Zone Description (Widget séparé)
-        #right_layout.addSpacing(20)
         right_layout.addWidget(QLabel("<b>Description :</b>"))
-        self.desc_box = QTextEdit() # Importez QTextEdit depuis QtWidgets
-        self.desc_box.setReadOnly(True) # On ne peut pas modifier la description ici
+        self.desc_box = QTextEdit()
+        self.desc_box.setReadOnly(True)
         right_layout.addWidget(self.desc_box)
         right_layout.addStretch()
 
-        # Layout horizontal pour les boutons côte à côte
         btn_layout = QHBoxLayout()
         self.btn_ouvrir = QPushButton("Ouvrir")
         self.btn_telecharger = QPushButton("Télécharger")
@@ -271,35 +280,31 @@ class MainWindow(QMainWindow):
         btn_layout.addWidget(self.btn_telecharger)
         right_layout.addLayout(btn_layout)
 
-        # --- CONNEXIONS ---
-        # Quand on clique sur une ligne du tableau
         self.table.itemClicked.connect(self.afficherDetails)
         self.table.customContextMenuRequested.connect(self.afficherMenuContextuelDocument)
-        # Bouton ouvrir
         self.btn_ouvrir.clicked.connect(self.ouvrirDocumentSelectionne)
         self.btn_telecharger.clicked.connect(self.telechargerDocument)
 
-        # On ajoute la partie droite au layout principal
         main_layout.addWidget(right_panel, stretch=2)
         self.afficherTableauVide()
 
     def afficherMenuContextuelDocument(self, position):
-        """Affiche le menu clic droit de la liste des documents."""
         menu = self.creerMenuContextuelDocument(position)
         menu.exec(self.table.viewport().mapToGlobal(position))
 
     def creerMenuContextuelDocument(self, position):
-        """Prépare le menu contextuel et sélectionne la ligne ciblée si elle existe."""
         index = self.table.indexAt(position)
         menu = QMenu(self)
 
         if index.isValid():
             self.table.selectRow(index.row())
             self.afficherDetails(self.table.item(index.row(), 0))
+
             action_ouvrir = menu.addAction("Ouvrir")
             action_telecharger = menu.addAction("Télécharger")
             action_supprimer = menu.addAction("Supprimer")
             action_copier_ressource = menu.addAction("Copier le chemin de la ressource")
+
             action_ouvrir.triggered.connect(self.ouvrirDocumentSelectionne)
             action_telecharger.triggered.connect(self.telechargerDocument)
             action_supprimer.triggered.connect(self.deleteDocument)
@@ -315,10 +320,8 @@ class MainWindow(QMainWindow):
         return menu
 
     def creerFiltresRecherche(self, parent_layout):
-        """Crée les champs de recherche multicritère au-dessus du tableau."""
-        parent_layout.addWidget(QLabel("<b>Recherche multicritère</b>"))
+        parent_layout.addWidget(QLabel("Recherche multicritère"))
 
-        # Première ligne : les recherches textuelles les plus utilisées.
         ligne_principale = QHBoxLayout()
         self.search_titre = QLineEdit()
         self.search_titre.setPlaceholderText("Titre")
@@ -331,14 +334,12 @@ class MainWindow(QMainWindow):
         ligne_principale.addWidget(self.search_mots_cles)
         parent_layout.addLayout(ligne_principale)
 
-        # Les catégories sont cochables pour permettre une logique OR entre elles.
         ligne_secondaire = QHBoxLayout()
         self.search_categories = CheckableComboBox("Toutes les catégories")
         self.search_categories.add_checkable_items(self.logic.list_categories())
         ligne_secondaire.addWidget(self.search_categories)
         parent_layout.addLayout(ligne_secondaire)
 
-        # Les dates sont optionnelles : la case active ou ignore le filtre.
         ligne_dates = QHBoxLayout()
         self.search_date_min_active = QCheckBox("Date min")
         self.search_date_min = QDateEdit(QDate.currentDate().addYears(-1))
@@ -364,7 +365,6 @@ class MainWindow(QMainWindow):
         ligne_dates.addWidget(self.btn_reset_search)
         parent_layout.addLayout(ligne_dates)
 
-        # Le tri est envoyé au moteur avec les autres filtres de recherche.
         ligne_tri = QHBoxLayout()
         ligne_tri.addWidget(QLabel("Trier par :"))
         self.search_sort_by = QComboBox()
@@ -389,23 +389,16 @@ class MainWindow(QMainWindow):
         self.search_sort_by.currentIndexChanged.connect(self.rechercherDocuments)
         self.search_sort_order.currentIndexChanged.connect(self.rechercherDocuments)
 
-        for champ in (
-            self.search_titre,
-            self.search_auteur,
-            self.search_mots_cles,
-        ):
+        for champ in (self.search_titre, self.search_auteur, self.search_mots_cles):
             champ.returnPressed.connect(self.rechercherDocuments)
 
     def chargerDocuments(self):
-        """Charge les documents depuis SQLite dans le tableau."""
         self.chargerDocumentsAvecFiltres(SearchFilters())
 
     def afficherTableauVide(self):
-        """Remet la liste dans son état initial, sans lancer de recherche."""
         self.afficherDocuments([])
 
     def chargerDocumentsAvecFiltres(self, filters, afficher_message_aucun=False):
-        """Récupère les documents via la couche logique puis les affiche dans le tableau."""
         try:
             documents = self.logic.search_documents(filters)
             self.afficherDocuments(documents)
@@ -417,7 +410,6 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Erreur", f"Impossible de charger les documents : {exc}")
 
     def afficherDocuments(self, documents):
-        """Affiche une liste de documents déjà formatée dans le tableau."""
         self.table.setRowCount(0)
         self.table.clearSelection()
         self.viderDetails()
@@ -425,6 +417,7 @@ class MainWindow(QMainWindow):
         for document in documents:
             row = self.table.rowCount()
             self.table.insertRow(row)
+
             categories = ", ".join(document.get("categorie") or []) or "-"
             valeurs = [
                 document.get("titre", ""),
@@ -439,8 +432,6 @@ class MainWindow(QMainWindow):
                 self.table.setItem(row, col, item)
 
     def construireFiltresRecherche(self):
-        """Construit l'objet SearchFilters à partir des champs de l'interface."""
-        # L'interface ne fait pas de SQL : elle prépare seulement les filtres métier.
         return SearchFilters(
             titre=self.search_titre.text(),
             auteur=self.search_auteur.text(),
@@ -461,26 +452,21 @@ class MainWindow(QMainWindow):
         )
 
     def rechercherDocuments(self):
-        """Lance une recherche multicritère via la couche métier."""
         self.chargerDocumentsAvecFiltres(
             self.construireFiltresRecherche(),
             afficher_message_aucun=True,
         )
 
     def reinitialiserRecherche(self):
-        """Vide les filtres puis remet la liste dans son état initial."""
-        # On remet l'écran dans le même état que le chargement initial.
         self.search_titre.clear()
         self.search_auteur.clear()
         self.search_mots_cles.clear()
         self.search_categories.clear_checked_items()
-
         self.search_date_min_active.setChecked(False)
         self.search_date_max_active.setChecked(False)
         self.search_date_min.setEnabled(False)
         self.search_date_max.setEnabled(False)
 
-        # Le reset change les menus de tri sans lancer une recherche automatique.
         sort_by_was_blocked = self.search_sort_by.blockSignals(True)
         sort_order_was_blocked = self.search_sort_order.blockSignals(True)
         self.search_sort_by.setCurrentIndex(0)
@@ -500,7 +486,6 @@ class MainWindow(QMainWindow):
         self.desc_box.clear()
 
     def documentSelectionne(self):
-        # Retourne le document complet associé à la ligne sélectionnée.
         current_row = self.table.currentRow()
         if current_row == -1:
             return None
@@ -513,7 +498,12 @@ class MainWindow(QMainWindow):
         return document if isinstance(document, dict) else None
 
     def cheminDocumentSelectionne(self):
-        # Calcule le chemin disque du document sélectionné.
+        """
+        Retourne un chemin local utilisable par l'application.
+
+        Si la ressource est SFTP, le fichier est d'abord téléchargé dans
+        data/documents/cache/ puis ce chemin local est retourné.
+        """
         document = self.documentSelectionne()
         if not document:
             return None
@@ -522,16 +512,28 @@ class MainWindow(QMainWindow):
         if not ressource:
             return None
 
+        if is_sftp_resource(ressource):
+            remote_path = ressource.replace("sftp:", "", 1)
+            filename = Path(remote_path).name
+            cache_dir = self.project_root / "data" / "documents" / "cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            local_cache_path = cache_dir / filename
+
+            sftp_storage = SftpStorage.from_project(self.project_root)
+            sftp_storage.download_file(ressource, local_cache_path)
+            return local_cache_path
+
         chemin = Path(ressource)
         if not chemin.is_absolute():
             chemin = self.project_root / chemin
-            legacy_data_path = self.project_root / "data" / ressource
-            if not chemin.exists() and legacy_data_path.exists():
-                chemin = legacy_data_path
+
+        legacy_data_path = self.project_root / "data" / ressource
+        if not chemin.exists() and legacy_data_path.exists():
+            chemin = legacy_data_path
+
         return chemin
 
     def copierCheminRessourceSelectionne(self):
-        # Copie le chemin stocké en base pour le document sélectionné.
         document = self.documentSelectionne()
         if not document:
             QMessageBox.warning(self, "Attention", "Veuillez sélectionner un document.")
@@ -546,8 +548,6 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Chemin de la ressource copié", 3000)
 
     def afficherDetails(self, item):
-        """ Met à jour la partie droite quand on clique sur le tableau """
-        # Affiche les informations principales du document sélectionné.
         row = item.row()
         titre = self.table.item(row, 0).text() if self.table.item(row, 0) else "-"
         auteur = self.table.item(row, 1).text() if self.table.item(row, 1) else "-"
@@ -558,25 +558,25 @@ class MainWindow(QMainWindow):
         self.info_auteur.setText(f"Auteur : {auteur}")
         self.info_date.setText(f"Date : {date}")
         self.info_cat.setText(f"Catégorie : {cat}")
+
         document = self.documentSelectionne()
-        # Les informations longues restent dans la fiche détail pour garder le tableau lisible.
         ressource = document.get("ressource") if document else ""
         mots_cles = ", ".join(document.get("mots_cles") or []) if document else ""
+        description = document.get("description") if document else ""
+
         self.info_ressource.setText(f"Ressource : {ressource or '-'}")
         self.info_mots_cles.setText(f"Mots-clés : {mots_cles or '-'}")
-        description = document.get("description") if document else ""
         self.desc_box.setText(description or f"Aucune description pour : {titre}")
 
     def filtrerTableau(self):
-        """Compatibilité avec l'ancien nom : utilise maintenant le moteur métier."""
         self.rechercherDocuments()
 
     def importDocument(self):
-        # Ouvre la boîte de dialogue d'import et enregistre le document en base.
         dialog = AddDocumentDialog(self, self.logic.list_categories())
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
+
             try:
                 if not data["fichier"]:
                     raise ValidationError("Veuillez sélectionner un fichier.")
@@ -589,6 +589,7 @@ class MainWindow(QMainWindow):
                     data["fichier"],
                     data["stockage"],
                 )
+
                 suffix = Path(data["fichier"]).suffix.upper().lstrip(".")
 
                 document_id = self.logic.add_document(
@@ -604,20 +605,39 @@ class MainWindow(QMainWindow):
                         type_fichier=suffix,
                     )
                 )
-                QMessageBox.information(self, "Ajout", f"Document ajouté avec succès (id {document_id}).")
+
+                QMessageBox.information(
+                    self,
+                    "Ajout",
+                    f"Document ajouté avec succès (id {document_id}).",
+                )
                 self.chargerDocuments()
+
             except ValidationError as exc:
                 QMessageBox.warning(self, "Validation", str(exc))
+            except SftpStorageError as exc:
+                QMessageBox.critical(self, "Erreur SFTP", str(exc))
             except Exception as exc:
                 QMessageBox.critical(self, "Erreur", f"Impossible d'ajouter le document : {exc}")
 
     def copierFichierDansStockage(self, source_file, stockage):
-        # Copie le fichier choisi dans l'espace applicatif et retourne son chemin relatif.
+        """
+        Copie le fichier choisi dans le bon espace de stockage.
+
+        - local : copie dans data/documents/local/
+        - partage : upload sur le VPS en SFTP dans /commun
+        """
         source = Path(source_file)
+
+        if stockage == "partage":
+            sftp_storage = SftpStorage.from_project(self.project_root)
+            return sftp_storage.upload_file(source)
+
         target_dir = self.project_root / "data" / "documents" / stockage
         target_dir.mkdir(parents=True, exist_ok=True)
 
         target = target_dir / source.name
+
         if target.exists():
             stem = source.stem
             suffix = source.suffix
@@ -630,8 +650,12 @@ class MainWindow(QMainWindow):
         return str(target.relative_to(self.project_root)).replace("\\", "/")
 
     def ouvrirDocumentSelectionne(self):
-        # Ouvre le fichier du document sélectionné avec l'application système.
-        file_path = self.cheminDocumentSelectionne()
+        try:
+            file_path = self.cheminDocumentSelectionne()
+        except SftpStorageError as exc:
+            QMessageBox.critical(self, "Erreur SFTP", str(exc))
+            return
+
         if not file_path or not file_path.exists():
             QMessageBox.warning(self, "Erreur", "Fichier introuvable sur le disque.")
             return
@@ -648,158 +672,117 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Erreur", f"Impossible d'ouvrir le document : {exc}")
 
     def telechargerDocument(self):
-        """
-        Copie le fichier du document sélectionné vers un emplacement choisi.
-        """
+        try:
+            file_path = self.cheminDocumentSelectionne()
+        except SftpStorageError as exc:
+            QMessageBox.critical(self, "Erreur SFTP", str(exc))
+            return
 
-        file_path = self.cheminDocumentSelectionne()
         if not file_path or not file_path.exists():
             QMessageBox.warning(self, "Erreur", "Fichier introuvable sur le disque.")
             return
 
-        dest_path, _ = QFileDialog.getSaveFileName(self, "Enregistrer sous", file_path.name)
+        dest_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Enregistrer sous",
+            file_path.name,
+        )
         if dest_path:
-            shutil.copy(file_path, dest_path) # Copie physique du fichier
+            shutil.copy(file_path, dest_path)
             QMessageBox.information(self, "Succès", "Fichier téléchargé/copié avec succès.")
 
     def createActions(self):
-        """
-         Crée les actions de menu et relie chaque action à sa méthode.
-        """
-        
-        ######## Partie Fichier ########
-        # Archive
         self.actArchive = QAction("&Corbeille", self)
         self.actArchive.setShortcut("Ctrl+A")
         self.actArchive.setStatusTip("Archive des documents récemment effacés")
 
-        # Préférences
         self.actPref = QAction("&Préférences", self)
         self.actPref.setShortcut("Ctrl+P")
         self.actPref.setStatusTip("Préférences de l'utilisateur")
         self.actPref.triggered.connect(self.ouvrirPreferences)
 
-        # Quitter l'appli
         self.actExit = QAction("Quitter", self)
         self.actExit.setShortcut("Alt+F4")
         self.actExit.setStatusTip("Quitter")
         self.actExit.triggered.connect(self.quitApp)
 
-        ####### Partie Édition ######
-        # Exporter
         self.actExport = QAction("&Exporter", self)
         self.actExport.setShortcut("Ctrl+E")
         self.actExport.setStatusTip("Exporter le document")
         self.actExport.triggered.connect(self.exportDocument)
 
-        # Supprimer
         self.actDelete = QAction("&Supprimer un document", self)
         self.actDelete.setShortcut("Ctrl+D")
         self.actDelete.setStatusTip("Supprimer le document sélectionné")
         self.actDelete.triggered.connect(self.deleteDocument)
- 
-        ######## Partie Importer ########
+
         self.actImport = QAction("&Sélectionner un document...", self)
         self.actImport.setShortcut("Ctrl+O")
         self.actImport.setStatusTip("Importer un document depuis votre ordinateur")
         self.actImport.triggered.connect(self.importDocument)
 
-        ######## Partie Aide ########
-        # Guide
         self.actGuide = QAction("&Guide utilisateur", self)
         self.actGuide.setShortcut("Ctrl+G")
         self.actGuide.setStatusTip("Guide utilisateur")
 
-        # Contact
         self.actContact = QAction("&Contacter", self)
-        self.actContact.setShortcut("Ctrl+A")
+        self.actContact.setShortcut("Ctrl+M")
         self.actContact.setStatusTip("Contacter les développeurs")
 
-
-
     def createMenuBar(self):
-        """
-        Construit la barre de menu à partir des actions créées.
-        """
-        
-        # Partie pour Fichier
         menu = self.menuBar()
-        file = menu.addMenu("&Fichier")
-        file.addAction(self.actArchive)
-        file.addSeparator()
-        file.addAction(self.actPref)
-        file.addSeparator()
-        file.addAction(self.actExit)
 
-        # Partie pour Édition
+        file_menu = menu.addMenu("&Fichier")
+        file_menu.addAction(self.actArchive)
+        file_menu.addSeparator()
+        file_menu.addAction(self.actPref)
+        file_menu.addSeparator()
+        file_menu.addAction(self.actExit)
+
         edition = menu.addMenu("&Édition")
         edition.addAction(self.actExport)
         edition.addSeparator()
         edition.addAction(self.actDelete)
 
-        # Partie pour Importer
         import_menu = menu.addMenu("&Importer")
         import_menu.addAction(self.actImport)
 
-        # Partie Aide
         help_menu = menu.addMenu("&Aide")
         help_menu.addAction(self.actGuide)
         help_menu.addSeparator()
         help_menu.addAction(self.actContact)
 
-
     def quitApp(self):
-        """
-        Ferme la fenêtre pour quitter l'application
-        """
-
         self.close()
 
     def exportDocument(self):
-        """
-        Exporte le contenu actuel du tableau dans un fichier texte.
-        """
-
         if self.table.rowCount() == 0:
             QMessageBox.warning(self, "Exportation", "Le tableau est vide !")
             return
 
-        # Ouvrir la boîte de dialogue "Enregistrer sous"
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Exporter les données",
             "export_donnees.txt",
-            "Fichier Texte (*.txt);;Tous les fichiers (*)"
+            "Fichier Texte (*.txt);;Tous les fichiers (*)",
         )
 
         if file_path:
             try:
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    # On parcourt les lignes et les colonnes
+                with open(file_path, "w", encoding="utf-8") as f:
                     for row in range(self.table.rowCount()):
                         row_data = []
                         for col in range(self.table.columnCount()):
                             item = self.table.item(row, col)
-                            # On récupère le texte ou un vide si la cellule est vide
-                            text = item.text() if item else ""
-                            row_data.append(text)
-
-                        # On écrit la ligne dans le fichier
+                            row_data.append(item.text() if item else "")
                         f.write(" | ".join(row_data) + "\n")
-
-            except Exception as e:
-                QMessageBox.critical(self, "Erreur", f"Impossible d'exporter : {e}")
+            except Exception as exc:
+                QMessageBox.critical(self, "Erreur", f"Impossible d'exporter : {exc}")
 
     def editDocument(self):
-        """
-        Point d'entrée prévu pour modifier le document sélectionné.
-        """
         print("Action : Modifier le document")
 
     def deleteDocument(self):
-        """
-        Supprime le document sélectionné après confirmation.
-        """
         document = self.documentSelectionne()
         if not document:
             QMessageBox.warning(self, "Attention", "Veuillez cliquer sur une ligne du tableau d'abord.")
@@ -811,22 +794,18 @@ class MainWindow(QMainWindow):
             return
 
         confirm = QMessageBox.question(
-            self, "Confirmation",
+            self,
+            "Confirmation",
             "Voulez-vous vraiment supprimer ce document ?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
-
         if confirm != QMessageBox.StandardButton.Yes:
             return
 
         try:
             self.logic.delete_document(int(document_id))
             self.chargerDocuments()
-            self.info_titre.setText("Titre : -")
-            self.info_auteur.setText("Auteur : -")
-            self.info_date.setText("Date : -")
-            self.info_cat.setText("Catégorie : -")
-            self.desc_box.clear()
+            self.viderDetails()
         except Exception as exc:
             QMessageBox.critical(self, "Erreur", f"Impossible de supprimer le document : {exc}")
 
@@ -834,128 +813,104 @@ class MainWindow(QMainWindow):
         dialog = PreferencesDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             reglages = dialog.get_preferences()
-            
-            # 1. Gestion de la taille de la police globale
+
             font = self.font()
             font.setPointSize(reglages["taille_police"])
-            # Utilisation sécurisée de l'instance globale de l'application
-            QApplication.instance().setFont(font) 
+            QApplication.instance().setFont(font)
 
-            # 2. Gestion du Thème sur toute l'application
             if reglages["theme"] == "Sombre":
                 self.appliquer_theme_sombre()
             else:
                 self.appliquer_theme_clair()
 
     def appliquer_theme_sombre(self):
-        # On inverse proprement toutes les couleurs en préservant les états de survol natifs
         theme_sombre = """
-            /* Fenêtres principales, fenêtres de dialogue et conteneurs généraux */
-            QMainWindow, QDialog, .QWidget {
-                background-color: #1e1e1e;
-                color: #ffffff;
-            }
-            
-            /* Correction pour que TOUS les textes (y compris dans les Préférences) soient blancs */
-            QLabel, QRadioButton, QCheckBox {
-                color: #ffffff;
-            }
-            
-            /* --- BARRE DE MENU ET RECOUVREMENT --- */
-            QMenuBar {
-                background-color: #1e1e1e;
-                color: #ffffff;
-            }
-            /* Rétablissement de l'effet au survol de la souris sur la barre principale */
-            QMenuBar::item:selected {
-                background-color: #3d3d3d;
-                color: #ffffff;
-            }
-            QMenu {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: 1px solid #3f3f46;
-            }
-            /* Rétablissement de l'effet au survol de la souris sur les sous-menus */
-            QMenu::item:selected {
-                background-color: #2980b9;
-                color: #ffffff;
-            }
-            
-            /* --- TABLEAU MODE SOMBRE --- */
-            QTableWidget {
-                background-color: #252526;
-                gridline-color: #3f3f46;
-                color: #ffffff;
-            }
-            QHeaderView::section {
-                background-color: #2d2d30;
-                color: #ffffff;
-                border: 1px solid #3f3f46;
-            }
-            
-            /* --- ZONES DE SAISIE --- */
-            QLineEdit, QTextEdit, QSpinBox, QComboBox {
-                background-color: #2d2d30;
-                color: #ffffff;
-                border: 1px solid #555555;
-                padding: 5px;
-            }
+        QMainWindow, QDialog, .QWidget {
+            background-color: #1e1e1e;
+            color: #ffffff;
+        }
+        QLabel, QRadioButton, QCheckBox {
+            color: #ffffff;
+        }
+        QMenuBar {
+            background-color: #1e1e1e;
+            color: #ffffff;
+        }
+        QMenuBar::item:selected {
+            background-color: #3d3d3d;
+            color: #ffffff;
+        }
+        QMenu {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #3f3f46;
+        }
+        QMenu::item:selected {
+            background-color: #2980b9;
+            color: #ffffff;
+        }
+        QTableWidget {
+            background-color: #252526;
+            gridline-color: #3f3f46;
+            color: #ffffff;
+        }
+        QHeaderView::section {
+            background-color: #2d2d30;
+            color: #ffffff;
+            border: 1px solid #3f3f46;
+        }
+        QLineEdit, QTextEdit, QSpinBox, QComboBox {
+            background-color: #2d2d30;
+            color: #ffffff;
+            border: 1px solid #555555;
+            padding: 5px;
+        }
         """
         QApplication.instance().setStyleSheet(theme_sombre)
         self.statusBar().showMessage("Mode Sombre activé", 3000)
 
     def appliquer_theme_clair(self):
-        # On rétablit EXACTEMENT les composants système d'origine (comme sur votre capture d'écran initiale)
         theme_clair = """
-            QMainWindow, QDialog, .QWidget {
-                background-color: #f5f5f5;
-                color: #000000;
-            }
-            
-            QLabel, QRadioButton, QCheckBox {
-                color: #000000;
-            }
-            
-            /* --- BARRE DE MENU STANDARD --- */
-            QMenuBar {
-                background-color: #f5f5f5;
-                color: #000000;
-            }
-            QMenuBar::item:selected {
-                background-color: #e5e5e5;
-                color: #000000;
-            }
-            QMenu {
-                background-color: #ffffff;
-                color: #000000;
-                border: 1px solid #ccc;
-            }
-            QMenu::item:selected {
-                background-color: #3498db;
-                color: #ffffff;
-            }
-            
-            /* --- ZONES DE SAISIE --- */
-            QLineEdit, QTextEdit, QSpinBox, QComboBox {
-                background-color: #ffffff;
-                color: #000000;
-                border: 1px solid #ccc;
-                padding: 5px;
-            }
-            
-            /* --- REMISE À ZÉRO DU TABLEAU D'ORIGINE --- */
-            /* En laissant vide ici, le tableau reprend ses couleurs par défaut (gris clair et en-têtes natifs) */
-            QTableWidget {
-                background-color: #ffffff;
-                gridline-color: #dcdcdc;
-                color: #000000;
-            }
-            QHeaderView::section {
-                background-color: #e5e5e5;
-                color: #000000;
-                border: 1px solid #dcdcdc;
-            }
+        QMainWindow, QDialog, .QWidget {
+            background-color: #f5f5f5;
+            color: #000000;
+        }
+        QLabel, QRadioButton, QCheckBox {
+            color: #000000;
+        }
+        QMenuBar {
+            background-color: #f5f5f5;
+            color: #000000;
+        }
+        QMenuBar::item:selected {
+            background-color: #e5e5e5;
+            color: #000000;
+        }
+        QMenu {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #ccc;
+        }
+        QMenu::item:selected {
+            background-color: #3498db;
+            color: #ffffff;
+        }
+        QLineEdit, QTextEdit, QSpinBox, QComboBox {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #ccc;
+            padding: 5px;
+        }
+        QTableWidget {
+            background-color: #ffffff;
+            gridline-color: #dcdcdc;
+            color: #000000;
+        }
+        QHeaderView::section {
+            background-color: #e5e5e5;
+            color: #000000;
+            border: 1px solid #dcdcdc;
+        }
         """
         QApplication.instance().setStyleSheet(theme_clair)
         self.statusBar().showMessage("Mode Clair activé", 3000)
