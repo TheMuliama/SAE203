@@ -59,6 +59,16 @@ La zone de recherche contient aussi deux menus de tri :
 
 Par défaut, les documents sont triés par date décroissante. Le document le plus récent apparaît donc en premier.
 
+Le tri ne remplace pas la recherche. Il change seulement l'ordre des documents déjà affichés.
+
+Exemples :
+
+- `Date` + `Décroissant` affiche les documents les plus récents en premier ;
+- `Titre` + `Croissant` classe les documents de A à Z ;
+- `Auteur` + `Croissant` regroupe les documents selon le nom de l'auteur.
+
+Si une recherche est active, le tri s'applique uniquement aux résultats de cette recherche. Les filtres restent donc inchangés.
+
 ## Réinitialiser la recherche
 
 Le bouton `Réinitialiser` :

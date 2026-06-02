@@ -118,6 +118,16 @@ sort_by = date
 sort_order = desc
 ```
 
+Le tri ne remplace pas le filtrage. Les filtres déterminent quels documents sont récupérés, puis le tri détermine seulement leur ordre d'affichage.
+
+Exemples :
+
+- `sort_by = date`, `sort_order = desc` : documents les plus récents en premier ;
+- `sort_by = titre`, `sort_order = asc` : titres classés de A à Z ;
+- `sort_by = auteur`, `sort_order = desc` : auteurs classés en ordre décroissant.
+
+Quand l'utilisateur change le tri dans l'interface, `SearchFilters` conserve les filtres actifs. La nouvelle requête recharge donc les mêmes résultats filtrés, mais dans un ordre différent.
+
 Si une valeur de tri invalide arrive côté logique métier, `LogicService` revient sur ces valeurs sûres. C'est le fallback de tri.
 
 ## Validation des filtres
