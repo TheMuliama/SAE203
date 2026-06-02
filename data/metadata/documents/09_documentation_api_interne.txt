@@ -5,7 +5,7 @@ auteur_nom: FILAUMART
 auteur_prenom: Heloise
 auteur_matricule: RT004
 date_document: 2026-04-14
-ressource: documents/partage/documentation_api_interne.docx
+ressource: data/documents/partage/documentation_api_interne.docx
 type_fichier: DOCX
 stockage: partage
 statut: actif

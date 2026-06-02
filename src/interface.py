@@ -476,6 +476,9 @@ class MainWindow(QMainWindow):
         chemin = Path(ressource)
         if not chemin.is_absolute():
             chemin = self.project_root / chemin
+            legacy_data_path = self.project_root / "data" / ressource
+            if not chemin.exists() and legacy_data_path.exists():
+                chemin = legacy_data_path
         return chemin
 
     def afficherDetails(self, item):
@@ -546,7 +549,7 @@ class MainWindow(QMainWindow):
     def copierFichierDansStockage(self, source_file, stockage):
         # Copie le fichier choisi dans l'espace applicatif et retourne son chemin relatif.
         source = Path(source_file)
-        target_dir = self.project_root / "documents" / stockage
+        target_dir = self.project_root / "data" / "documents" / stockage
         target_dir.mkdir(parents=True, exist_ok=True)
 
         target = target_dir / source.name

@@ -36,8 +36,39 @@ class SQLiteRepository:
                     conn.executescript(self.schema_path.read_text(encoding='utf-8'))
                     conn.commit()
 
+        self._ensure_resource_paths_inside_data()
         self._ensure_authorized_categories()
         self.seed_from_metadata_if_empty()
+
+    def _ensure_resource_paths_inside_data(self) -> None:
+        with self._connect() as conn:
+            has_documents = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='Documents'"
+            ).fetchone()
+            if not has_documents:
+                return
+
+            conn.execute(
+                """
+                UPDATE Documents
+                SET ressource = 'data/' || ressource
+                WHERE ressource LIKE 'documents/%'
+                """
+            )
+
+            has_versions = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='Versions'"
+            ).fetchone()
+            if has_versions:
+                conn.execute(
+                    """
+                    UPDATE Versions
+                    SET ressource = 'data/' || ressource
+                    WHERE ressource LIKE 'documents/%'
+                    """
+                )
+
+            conn.commit()
 
     def _ensure_authorized_categories(self) -> None:
         with self._connect() as conn:
@@ -48,7 +79,7 @@ class SQLiteRepository:
             conn.commit()
 
     def seed_from_metadata_if_empty(self) -> None:
-        metadata_dir = self.project_root / 'metadata' / 'documents'
+        metadata_dir = self.project_root / 'data' / 'metadata' / 'documents'
         if not metadata_dir.exists():
             return
 
