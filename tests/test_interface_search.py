@@ -37,6 +37,18 @@ class InterfaceSearchTest(unittest.TestCase):
             for row in range(self.window.table.rowCount())
         ]
 
+    def table_authors(self):
+        return [
+            self.window.table.item(row, 1).text()
+            for row in range(self.window.table.rowCount())
+        ]
+
+    def table_dates(self):
+        return [
+            self.window.table.item(row, 2).text()
+            for row in range(self.window.table.rowCount())
+        ]
+
     def check_category(self, category):
         model = self.window.search_categories._items_model
         for row in range(model.rowCount()):
@@ -80,6 +92,64 @@ class InterfaceSearchTest(unittest.TestCase):
         self.assertEqual(self.window.search_categories.checked_items(), [])
         self.assertEqual(self.window.search_sort_by.currentData(), "date")
         self.assertEqual(self.window.search_sort_order.currentData(), "desc")
+
+    def test_tri_par_date_decroissante_par_defaut(self):
+        self.assertEqual(self.window.search_sort_by.currentData(), "date")
+        self.assertEqual(self.window.search_sort_order.currentData(), "desc")
+        self.assertEqual(self.table_dates()[0], "2026-04-18")
+        self.assertEqual(self.table_dates()[-1], "2026-04-01")
+
+    def test_tri_par_date_croissante(self):
+        self.window.search_sort_order.setCurrentIndex(1)
+        self.window.rechercherDocuments()
+
+        self.assertEqual(self.table_dates()[0], "2026-04-01")
+        self.assertEqual(self.table_dates()[-1], "2026-04-18")
+
+    def test_tri_par_titre_croissant_et_decroissant(self):
+        self.window.search_sort_by.setCurrentIndex(1)
+        self.window.search_sort_order.setCurrentIndex(1)
+        self.window.rechercherDocuments()
+        self.assertEqual(self.table_titles()[0], "Bilan mensuel avril")
+
+        self.window.search_sort_order.setCurrentIndex(0)
+        self.window.rechercherDocuments()
+        self.assertEqual(self.table_titles()[0], "Rapport activite reseau")
+
+    def test_tri_par_auteur_croissant_et_decroissant(self):
+        self.window.search_sort_by.setCurrentIndex(2)
+        self.window.search_sort_order.setCurrentIndex(1)
+        self.window.rechercherDocuments()
+        self.assertEqual(self.table_authors()[0], "Fabien AMOURANI")
+
+        self.window.search_sort_order.setCurrentIndex(0)
+        self.window.rechercherDocuments()
+        self.assertEqual(self.table_authors()[0], "Lucas MOUNIAMA")
+
+    def test_tri_apres_recherche_simple(self):
+        self.window.search_titre.setText("de")
+        self.window.search_sort_by.setCurrentIndex(1)
+        self.window.search_sort_order.setCurrentIndex(1)
+        self.window.rechercherDocuments()
+
+        self.assertEqual(self.window.table.rowCount(), 4)
+        self.assertEqual(self.table_titles()[0], "Contrat de stage - exemple")
+        self.assertEqual(self.window.search_titre.text(), "de")
+
+    def test_tri_apres_recherche_multicritere(self):
+        self.window.search_auteur.setText("Manon")
+        self.check_category("Projet")
+        self.window.search_sort_by.setCurrentIndex(1)
+        self.window.search_sort_order.setCurrentIndex(0)
+        self.window.rechercherDocuments()
+
+        self.assertEqual(self.window.table.rowCount(), 2)
+        self.assertEqual(
+            self.table_titles(),
+            ["Planning de deploiement", "Bilan mensuel avril"],
+        )
+        self.assertEqual(self.window.search_auteur.text(), "Manon")
+        self.assertEqual(self.window.search_categories.checked_items(), ["Projet"])
 
 
 if __name__ == "__main__":

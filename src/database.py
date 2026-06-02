@@ -274,14 +274,15 @@ class SQLiteRepository:
                 )"""
             )
 
-        sort_column = prepared_filters.get('sort_column', 'date_document')
-        if sort_column == 'auteur':
-            sql_sort = 'u.nom, u.prenom'
-        else:
-            sql_sort = f'd.{sort_column}'
         sort_order = prepared_filters.get('sort_order', 'desc').upper()
         if sort_order not in {'ASC', 'DESC'}:
             sort_order = 'DESC'
+
+        sort_column = prepared_filters.get('sort_column', 'date_document')
+        if sort_column == 'auteur':
+            sql_sort = f'u.nom {sort_order}, u.prenom {sort_order}'
+        else:
+            sql_sort = f'd.{sort_column} {sort_order}'
 
         sql = f"""
             SELECT DISTINCT
@@ -300,7 +301,7 @@ class SQLiteRepository:
             FROM Documents d
             JOIN Utilisateurs u ON u.idUser = d.idUser
             WHERE {' AND '.join(where)}
-            ORDER BY {sql_sort} {sort_order}, d.idDoc ASC
+            ORDER BY {sql_sort}, d.idDoc ASC
         """
 
         with self._connect() as conn:
