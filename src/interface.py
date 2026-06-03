@@ -11,31 +11,9 @@ from PyQt6.QtCore import QDate, QEvent, Qt, QTimer
 from PyQt6.QtGui import QAction, QColor, QIcon, QPixmap, QStandardItem, QStandardItemModel
 # Éléments d'interface
 from PyQt6.QtWidgets import (
-    QApplication,
-    QButtonGroup,
-    QCheckBox,
-    QComboBox,
-    QDateEdit,
-    QDialog,
-    QDialogButtonBox,
-    QFileDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QHeaderView,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QMenu,
-    QMessageBox,
-    QPushButton,
-    QRadioButton,
-    QSpinBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
+    QApplication, QButtonGroup, QCheckBox, QComboBox, QDateEdit, QDialog, QDialogButtonBox, QFileDialog,
+    QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
+    QPushButton, QRadioButton, QSpinBox, QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,)
 
 from src.database import build_repository
 from src.logic import DocumentInput, LogicService, SearchFilters, ValidationError
@@ -101,10 +79,6 @@ def trouver_logo():
     candidats = [
         "./assets/icons/logo.webp",
         "./assets/icons/logo.png",
-        "pouce.png",
-        "pouce.webp",
-        "pouce.jpg",
-        "pouce.jpeg",
     ]
     for chemin in candidats:
         if os.path.exists(chemin):
@@ -241,7 +215,7 @@ class AddDocumentDialog(QDialog):
         self.titre_input.setPlaceholderText("Saisissez le titre...")
 
         self.auteur_input = QLineEdit()
-        self.auteur_input.setPlaceholderText("Saisissez l'auteur...")
+        self.auteur_input.setPlaceholderText("Saisissez le prénom et le nom...")
 
         self.date_input = QDateEdit(QDate.currentDate())
         self.date_input.setCalendarPopup(True)
@@ -824,7 +798,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(
                     self,
                     "Ajout",
-                    f"Document ajouté avec succès (id {document_id}).",
+                    f"Votre document a été ajouté avec succès.",
                 )
                 self.afficherInterfaceDocuments()
                 self.chargerDocuments()
@@ -1115,12 +1089,6 @@ class MainWindow(QMainWindow):
         self.actExit.setShortcut("Alt+F4")
         self.actExit.triggered.connect(self.quitApp)
 
-        # Exporter : sauvegarde le tableau actuel dans un fichier texte
-        self.actExport = QAction("&Exporter", self)
-        self.actExport.setShortcut("Ctrl+E")
-        self.actExport.setStatusTip("Exporter le tableau")
-        self.actExport.triggered.connect(self.exportDocument)
-
         # Supprimer : envoie le document sélectionné dans la corbeille
         self.actDelete = QAction("&Supprimer", self)
         self.actDelete.setShortcut("Ctrl+D")
@@ -1137,11 +1105,6 @@ class MainWindow(QMainWindow):
         self.actSyncPartage.setStatusTip("Récupérer depuis le SFTP les documents partagés absents de la base locale")
         self.actSyncPartage.triggered.connect(lambda: self.synchroniserDocumentsPartages(afficher_message=True))
 
-        # Guide utilisateur
-        self.actGuide = QAction("&Guide utilisateur", self)
-        self.actGuide.setShortcut("Ctrl+G")
-        self.actGuide.setStatusTip("Guide utilisateur")
-
         # Contact : affiche les informations pour joindre l'équipe
         self.actContact = QAction("&Contacter", self)
         self.actContact.setShortcut("Ctrl+M")
@@ -1154,7 +1117,6 @@ class MainWindow(QMainWindow):
         # Partie Fichier
         file_menu = menu.addMenu("&Fichier")
         file_menu.addAction(self.actArchive)
-        file_menu.addAction(self.actExport)
         file_menu.addSeparator()
         file_menu.addAction(self.actPref)
         file_menu.addSeparator()
@@ -1172,8 +1134,6 @@ class MainWindow(QMainWindow):
 
         # Partie Aide
         help_menu = menu.addMenu("&Aide")
-        help_menu.addAction(self.actGuide)
-        help_menu.addSeparator()
         help_menu.addAction(self.actContact)
 
     def quitApp(self):
@@ -1218,13 +1178,24 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Erreur", "Impossible d'identifier le document sélectionné.")
             return
 
-        confirm = QMessageBox.question(
-            self,
-            "Confirmation",
-            "Voulez-vous vraiment supprimer ce document ?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if confirm != QMessageBox.StandardButton.Yes:
+        # 1. Création d'une instance personnalisée de QMessageBox
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle("Confirmation")
+        box.setText("Voulez-vous vraiment supprimer ce document ?")
+        
+        # 2. Ajout des boutons avec du texte personnalisé en français
+        oui_button = box.addButton("Oui", QMessageBox.ButtonRole.YesRole)
+        non_button = box.addButton("Non", QMessageBox.ButtonRole.NoRole)
+        
+        # Définir le bouton par défaut (surbrillance) sur "Non" par sécurité
+        box.setDefaultButton(non_button)
+        
+        # 3. Affichage de la boîte et récupération du clic
+        box.exec()
+
+        # Si l'utilisateur a cliqué sur autre chose que "Oui" (ou a fermé la fenêtre), on arrête
+        if box.clickedButton() != oui_button:
             return
 
         try:

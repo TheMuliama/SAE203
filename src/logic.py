@@ -425,8 +425,8 @@ class PreferencesDialog(QDialog):
         font_layout = QHBoxLayout()
         font_layout.addWidget(QLabel("Taille de la police globale :"))
         self.font_size_spin = QSpinBox()
-        self.font_size_spin.setRange(8, 15)
-        self.font_size_spin.setValue(10) # Valeur par défaut
+        self.font_size_spin.setRange(3, 20)
+        self.font_size_spin.setValue(9) # Valeur par défaut
         self.font_size_spin.setSuffix(" pt")
         font_layout.addWidget(self.font_size_spin)
         layout.addLayout(font_layout)
