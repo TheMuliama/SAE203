@@ -59,6 +59,7 @@ Les critères actuellement exposés dans l'interface sont :
 - auteur ;
 - catégorie ;
 - mots-clés ;
+- stockage ;
 - date minimale ;
 - date maximale.
 
@@ -97,6 +98,16 @@ Un document est affiché s'il appartient à Rapport ou Finance.
 Pour les catégories, la requête utilise une correspondance exacte avec `IN (...)`.
 
 Pour les mots-clés, la requête utilise `LIKE`, ce qui permet une recherche partielle.
+
+## Filtre de stockage
+
+`SearchFilters.stockage` permet de choisir les documents selon leur espace de stockage :
+
+- `tous` : aucun filtre SQL, les documents locaux et partagés sont affichés ;
+- `local` : ajoute une condition `d.stockage = 'local'` ;
+- `partage` : ajoute une condition `d.stockage = 'partage'`.
+
+La valeur par défaut est `tous`. Une valeur inconnue est refusée par `LogicService`.
 
 ## Tri des résultats
 
