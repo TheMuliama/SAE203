@@ -9,7 +9,7 @@ Voici le lien du site officiel de l'application : https://heloweeze.github.io/So
 
 - ajout de documents PDF, Word ou Excel ;
 - stockage local ou partagé ;
-- recherche multicritère par titre, auteur, catégories, mots-clés et dates ;
+- recherche multicritère par titre, auteur, catégories, mots-clés, dates et stockage ;
 - logique `AND` entre les champs de recherche ;
 - logique `OR` entre plusieurs catégories ou plusieurs mots-clés ;
 - tri par date, titre ou auteur, en ordre croissant ou décroissant ;

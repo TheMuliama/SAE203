@@ -12,7 +12,7 @@ Depuis le dossier du projet, lancez :
 
 L'application ouvre une fenêtre avec :
 
-- une zone de recherche en haut à gauche ;
+- une zone de recherche avancée sur la page d'accueil ;
 - une liste de documents au centre, vide au démarrage ;
 - une fiche de détails à droite ;
 - des boutons pour ouvrir ou télécharger le document sélectionné.
@@ -25,11 +25,16 @@ La recherche permet de filtrer les documents avec plusieurs critères :
 - `Auteur` : cherche une partie du nom ou prénom ;
 - `Mots-clés` : cherche un ou plusieurs mots-clés, séparés par des virgules ;
 - `Catégories` : permet de cocher une ou plusieurs catégories ;
+- `Stockage` : choisit les documents locaux, partagés ou les deux ;
 - `Date min` et `Date max` : limitent la recherche à une période.
 
 Pour lancer la recherche, remplissez les champs souhaités puis cliquez sur `Rechercher`.
 
 Les champs vides sont ignorés. Si vous cliquez sur `Rechercher` sans remplir de champ, tous les documents sont affichés.
+
+Le filtre `Stockage` est sur `Tous` par défaut. Il affiche donc les documents locaux et les documents partagés. Choisissez `Local` pour voir seulement les fichiers rangés dans l'espace local, ou `Partagé` pour voir seulement les documents partagés.
+
+La page d'accueil propose les mêmes filtres principaux. Quand vous lancez une recherche depuis l'accueil, l'application ouvre la liste des documents et conserve les filtres utilisés dans la zone de recherche principale.
 
 ## Comprendre la logique des filtres
 
@@ -75,9 +80,12 @@ Le bouton `Réinitialiser` :
 
 - vide les champs de recherche ;
 - décoche les catégories ;
+- remet le stockage sur `Tous` ;
 - désactive les dates ;
 - remet le tri par défaut ;
 - vide la liste des documents.
+
+Le bouton `Synchroniser`, placé sous les actions de recherche, récupère les documents partagés disponibles sur le stockage SFTP configuré.
 
 ## Lire la fiche de détails
 
