@@ -2,6 +2,9 @@
 
 SoweDrop est une application desktop de gestion documentaire développée en Python avec PyQt6. Elle permet d'ajouter des documents, de les associer à des métadonnées, de les rechercher avec plusieurs critères, puis de consulter leurs informations détaillées.
 
+## Site du logiciel
+Voici le lien du site officiel de l'application : https://heloweeze.github.io/SoweDrop/
+
 ## Fonctionnalités actuelles
 
 - ajout de documents PDF, Word ou Excel ;
