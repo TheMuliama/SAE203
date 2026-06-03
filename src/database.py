@@ -236,6 +236,11 @@ class SQLiteRepository:
             where.append('LOWER(d.ressource) LIKE ?')
             params.append(f"%{prepared_filters['ressource_like'].lower()}%")
 
+        if prepared_filters.get('stockage_exact'):
+            # Le choix "tous" ne fournit pas cette valeur et ne filtre donc rien.
+            where.append('d.stockage = ?')
+            params.append(prepared_filters['stockage_exact'])
+
         if prepared_filters.get('date_min'):
             where.append('d.date_document >= ?')
             params.append(prepared_filters['date_min'])

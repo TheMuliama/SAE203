@@ -6,7 +6,7 @@ SoweDrop est une application desktop de gestion documentaire développée en Pyt
 
 - ajout de documents PDF, Word ou Excel ;
 - stockage local ou partagé ;
-- recherche multicritère par titre, auteur, catégories, mots-clés et dates ;
+- recherche multicritère par titre, auteur, catégories, mots-clés, dates et stockage ;
 - logique `AND` entre les champs de recherche ;
 - logique `OR` entre plusieurs catégories ou plusieurs mots-clés ;
 - tri par date, titre ou auteur, en ordre croissant ou décroissant ;

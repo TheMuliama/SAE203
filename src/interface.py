@@ -547,7 +547,14 @@ class MainWindow(QMainWindow):
         ligne_secondaire = QHBoxLayout()
         self.search_categories = CheckableComboBox("Toutes les catégories")
         self.search_categories.add_checkable_items(self.logic.list_categories())
+        self.search_stockage = QComboBox()
+        self.search_stockage.addItem("Tous", "tous")
+        self.search_stockage.addItem("Local", "local")
+        self.search_stockage.addItem("Partagé", "partage")
+
         ligne_secondaire.addWidget(self.search_categories)
+        ligne_secondaire.addWidget(QLabel("Stockage :"))
+        ligne_secondaire.addWidget(self.search_stockage)
         parent_layout.addLayout(ligne_secondaire)
 
         ligne_dates = QHBoxLayout()
@@ -657,6 +664,7 @@ class MainWindow(QMainWindow):
                 if self.search_date_max_active.isChecked()
                 else None
             ),
+            stockage=self.search_stockage.currentData(),
             sort_by=self.search_sort_by.currentData(),
             sort_order=self.search_sort_order.currentData(),
         )
@@ -673,6 +681,7 @@ class MainWindow(QMainWindow):
         self.search_auteur.clear()
         self.search_mots_cles.clear()
         self.search_categories.clear_checked_items()
+        self.search_stockage.setCurrentIndex(0)
         self.search_date_min_active.setChecked(False)
         self.search_date_max_active.setChecked(False)
         self.search_date_min.setEnabled(False)
