@@ -1047,11 +1047,14 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Succès", "Fichier téléchargé/copié avec succès.")
 
     def createActions(self):
+        # Partie Fichier
+        # Corbeille : endroit où les documents récemment supprimés se trouvent 
         self.actArchive = QAction("&Corbeille", self)
         self.actArchive.setShortcut("Ctrl+A")
         self.actArchive.setStatusTip("Archive des documents récemment effacés")
         self.actArchive.triggered.connect(self.ouvrirCorbeille)
 
+        # Préférences : fenêtre pour changer l'apparance de l'appli
         self.actPref = QAction("&Préférences", self)
         self.actPref.setShortcut("Ctrl+P")
         self.actPref.triggered.connect(self.ouvrirPreferences)
