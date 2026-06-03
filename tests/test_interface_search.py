@@ -49,6 +49,12 @@ class InterfaceSearchTest(unittest.TestCase):
             for row in range(self.window.table.rowCount())
         ]
 
+    def table_storages(self):
+        return [
+            self.window.table.item(row, 0).data(Qt.ItemDataRole.UserRole)["stockage"]
+            for row in range(self.window.table.rowCount())
+        ]
+
     def check_category(self, category):
         model = self.window.search_categories._items_model
         for row in range(model.rowCount()):
@@ -67,6 +73,8 @@ class InterfaceSearchTest(unittest.TestCase):
 
         self.assertEqual(self.window.table.rowCount(), 12)
         self.assertEqual(self.window.table.item(0, 2).text(), "2026-04-18")
+        self.assertIn("local", self.table_storages())
+        self.assertIn("partage", self.table_storages())
 
     def test_recherche_simple_par_titre(self):
         self.window.search_titre.setText("contrat")
@@ -95,8 +103,23 @@ class InterfaceSearchTest(unittest.TestCase):
         self.assertEqual(self.window.search_auteur.text(), "")
         self.assertEqual(self.window.search_mots_cles.text(), "")
         self.assertEqual(self.window.search_categories.checked_items(), [])
+        self.assertEqual(self.window.search_stockage.currentData(), "tous")
         self.assertEqual(self.window.search_sort_by.currentData(), "date")
         self.assertEqual(self.window.search_sort_order.currentData(), "desc")
+
+    def test_filtre_stockage_local(self):
+        self.window.search_stockage.setCurrentIndex(1)
+        self.window.rechercherDocuments()
+
+        self.assertGreater(self.window.table.rowCount(), 0)
+        self.assertEqual(set(self.table_storages()), {"local"})
+
+    def test_filtre_stockage_partage(self):
+        self.window.search_stockage.setCurrentIndex(2)
+        self.window.rechercherDocuments()
+
+        self.assertGreater(self.window.table.rowCount(), 0)
+        self.assertEqual(set(self.table_storages()), {"partage"})
 
     def test_tri_par_date_decroissante_par_defaut(self):
         self.window.rechercherDocuments()
