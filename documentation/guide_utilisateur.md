@@ -83,6 +83,8 @@ Le bouton `Réinitialiser` :
 - remet le tri par défaut ;
 - vide la liste des documents.
 
+Le bouton `Synchroniser`, placé sous les actions de recherche, récupère les documents partagés disponibles sur le stockage SFTP configuré.
+
 ## Lire la fiche de détails
 
 Quand vous cliquez sur une ligne du tableau, la fiche de détails affiche :

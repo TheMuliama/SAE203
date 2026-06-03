@@ -547,14 +547,18 @@ class MainWindow(QMainWindow):
         ligne_secondaire = QHBoxLayout()
         self.search_categories = CheckableComboBox("Toutes les catégories")
         self.search_categories.add_checkable_items(self.logic.list_categories())
+        self.search_categories.setMinimumWidth(260)
+        self.search_categories.setMaximumWidth(360)
         self.search_stockage = QComboBox()
         self.search_stockage.addItem("Tous", "tous")
         self.search_stockage.addItem("Local", "local")
         self.search_stockage.addItem("Partagé", "partage")
+        self.search_stockage.setFixedWidth(140)
 
         ligne_secondaire.addWidget(self.search_categories)
         ligne_secondaire.addWidget(QLabel("Stockage :"))
         ligne_secondaire.addWidget(self.search_stockage)
+        ligne_secondaire.addStretch()
         parent_layout.addLayout(ligne_secondaire)
 
         ligne_dates = QHBoxLayout()
@@ -572,6 +576,8 @@ class MainWindow(QMainWindow):
 
         self.btn_rechercher = QPushButton("Rechercher")
         self.btn_reset_search = QPushButton("Réinitialiser")
+        self.btn_sync_partage = QPushButton("Synchroniser")
+        self.btn_sync_partage.setStatusTip("Récupérer les documents partagés depuis le SFTP")
 
         ligne_dates.addWidget(self.search_date_min_active)
         ligne_dates.addWidget(self.search_date_min)
@@ -581,6 +587,11 @@ class MainWindow(QMainWindow):
         ligne_dates.addWidget(self.btn_rechercher)
         ligne_dates.addWidget(self.btn_reset_search)
         parent_layout.addLayout(ligne_dates)
+
+        ligne_sync = QHBoxLayout()
+        ligne_sync.addStretch()
+        ligne_sync.addWidget(self.btn_sync_partage)
+        parent_layout.addLayout(ligne_sync)
 
         ligne_tri = QHBoxLayout()
         ligne_tri.addWidget(QLabel("Trier par :"))
@@ -603,6 +614,7 @@ class MainWindow(QMainWindow):
         self.search_date_max_active.toggled.connect(self.search_date_max.setEnabled)
         self.btn_rechercher.clicked.connect(self.rechercherDocuments)
         self.btn_reset_search.clicked.connect(self.reinitialiserRecherche)
+        self.btn_sync_partage.clicked.connect(lambda: self.synchroniserDocumentsPartages(afficher_message=True))
         self.search_sort_by.currentIndexChanged.connect(self.rechercherDocuments)
         self.search_sort_order.currentIndexChanged.connect(self.rechercherDocuments)
 

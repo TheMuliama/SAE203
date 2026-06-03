@@ -121,6 +121,18 @@ class InterfaceSearchTest(unittest.TestCase):
         self.assertGreater(self.window.table.rowCount(), 0)
         self.assertEqual(set(self.table_storages()), {"partage"})
 
+    def test_bouton_synchroniser_declenche_la_synchronisation(self):
+        appels = []
+
+        def fake_sync(afficher_message=True):
+            appels.append(afficher_message)
+            return 0
+
+        self.window.synchroniserDocumentsPartages = fake_sync
+        self.window.btn_sync_partage.click()
+
+        self.assertEqual(appels, [True])
+
     def test_tri_par_date_decroissante_par_defaut(self):
         self.window.rechercherDocuments()
 
