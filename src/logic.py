@@ -55,6 +55,7 @@ class SearchFilters:
     date_min: str | date | None = None
     date_max: str | date | None = None
     ressource: str = ""
+    stockage: str = "tous"    # tous | local | partage
     sort_by: str = "date"     # date | titre | auteur
     sort_order: str = "desc"  # desc | asc
 
@@ -112,6 +113,7 @@ class LogicService:
     }
     ALLOWED_SORT_ORDER = {"asc", "desc"}
     ALLOWED_STORAGE = {"local", "partage"}
+    ALLOWED_SEARCH_STORAGE = {"tous", "local", "partage"}
     STORAGE_ALIASES = {"shared": "partage"}
 
     def __init__(self, repository: DatabaseRepository):
@@ -226,6 +228,12 @@ class LogicService:
         titre = self._clean_text(filters.titre, allow_empty=True)
         auteur = self._clean_text(filters.auteur, allow_empty=True)
         ressource = self._clean_text(filters.ressource, allow_empty=True)
+        stockage = self._clean_text(filters.stockage or "tous", allow_empty=True).lower()
+        if not stockage:
+            stockage = "tous"
+        if stockage not in self.ALLOWED_SEARCH_STORAGE:
+            raise ValidationError("Le filtre de stockage doit être 'tous', 'local' ou 'partage'.")
+
         # Les catégories sont validées contre la liste officielle du projet.
         categories = self._normalize_authorized_categories(filters.categories)
         mots_cles = self._normalize_string_list(filters.mots_cles)
@@ -252,6 +260,7 @@ class LogicService:
             "titre_like": titre or None,
             "auteur_like": auteur or None,
             "ressource_like": ressource or None,
+            "stockage_exact": stockage if stockage in self.ALLOWED_STORAGE else None,
             "categories_exact_or": categories or [],
             "mots_cles_like_or": mots_cles or [],
             "date_min": self._date_to_iso(date_min) if date_min else None,
