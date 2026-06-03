@@ -1,4 +1,5 @@
 import os
+import sys
 import platform
 import shutil
 import sqlite3
@@ -91,19 +92,56 @@ class SowedropPreferencesDialog(QDialog):
         layout.addWidget(self.buttons)
 
 
+def chemin_ressource(chemin_relatif: str) -> str:
+    """
+    Retourne un chemin utilisable en développement et dans l'exécutable PyInstaller.
+
+    En développement, les fichiers sont cherchés depuis la racine du projet.
+    En exécutable, PyInstaller peut placer les fichiers soit à côté de l'exécutable,
+    soit dans le dossier _internal. Cette fonction teste les deux cas.
+    """
+    chemin_relatif = chemin_relatif.replace("\\", "/").lstrip("/")
+
+    candidats = []
+
+    if getattr(sys, "frozen", False):
+        dossier_exe = Path(sys.executable).resolve().parent
+        candidats.append(dossier_exe / chemin_relatif)
+        candidats.append(dossier_exe / "_internal" / chemin_relatif)
+
+        dossier_meipass = Path(getattr(sys, "_MEIPASS", dossier_exe))
+        candidats.append(dossier_meipass / chemin_relatif)
+
+    racine_projet = Path(__file__).resolve().parent.parent
+    candidats.append(racine_projet / chemin_relatif)
+    candidats.append(Path.cwd() / chemin_relatif)
+
+    for candidat in candidats:
+        if candidat.exists():
+            return str(candidat)
+
+    # Retour de secours : utile pour voir le chemin attendu dans les logs/debug.
+    return str(candidats[0] if candidats else Path(chemin_relatif))
+
+
 def trouver_logo():
     candidats = [
-        "./assets/icons/logo.webp",
-        "./assets/icons/logo.png",
-        "pouce.png",
+        "assets/icons/logo.webp",
+        "assets/icons/logo.png",
+        "assets/icons/pouce.webp",
+        "assets/icons/pouce.png",
         "pouce.webp",
+        "pouce.png",
         "pouce.jpg",
         "pouce.jpeg",
     ]
+
     for chemin in candidats:
-        if os.path.exists(chemin):
-            return chemin
-    return "./assets/icons/logo.webp"
+        chemin_absolu = chemin_ressource(chemin)
+        if Path(chemin_absolu).exists():
+            return chemin_absolu
+
+    return chemin_ressource("assets/icons/logo.webp")
 
 
 class ContactDialog(QDialog):
