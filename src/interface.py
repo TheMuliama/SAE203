@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
     QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -226,6 +227,19 @@ class CheckableComboBox(QComboBox):
                 item.setCheckState(Qt.CheckState.Unchecked)
         self._update_display_text()
 
+    def set_checked_items(self, values):
+        checked_values = {str(value).strip().lower() for value in values if str(value).strip()}
+        for row in range(self._items_model.rowCount()):
+            item = self._items_model.item(row)
+            if item:
+                state = (
+                    Qt.CheckState.Checked
+                    if item.text().strip().lower() in checked_values
+                    else Qt.CheckState.Unchecked
+                )
+                item.setCheckState(state)
+        self._update_display_text()
+
     def eventFilter(self, watched, event):
         if watched == self.view().viewport():
             if event.type() == QEvent.Type.MouseButtonPress:
@@ -396,6 +410,8 @@ class MainWindow(QMainWindow):
         self.search_bar_accueil.returnPressed.connect(self.executer_recherche_accueil)
         accueil_layout.addWidget(self.search_bar_accueil, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        self.creerFiltresAccueil(accueil_layout)
+
         self.main_layout.addWidget(self.accueil_container, stretch=1)
 
         # INTERFACE CLASSIQUE
@@ -491,12 +507,115 @@ class MainWindow(QMainWindow):
         self.left_container.show()
         self.right_panel.show()
 
+    def creerFiltresAccueil(self, parent_layout):
+        accueil_filters = QWidget()
+        accueil_filters.setFixedWidth(620)
+        layout = QVBoxLayout(accueil_filters)
+        layout.setContentsMargins(0, 8, 0, 0)
+
+        ligne_textes = QHBoxLayout()
+        self.accueil_auteur = QLineEdit()
+        self.accueil_auteur.setPlaceholderText("Auteur")
+        self.accueil_mots_cles = QLineEdit()
+        self.accueil_mots_cles.setPlaceholderText("Mots-clés")
+        ligne_textes.addWidget(self.accueil_auteur)
+        ligne_textes.addWidget(self.accueil_mots_cles)
+        layout.addLayout(ligne_textes)
+
+        ligne_secondaire = QHBoxLayout()
+        self.accueil_categories = CheckableComboBox("Toutes les catégories")
+        self.accueil_categories.add_checkable_items(self.logic.list_categories())
+        self.accueil_categories.setMinimumWidth(260)
+        self.accueil_categories.setMaximumWidth(360)
+        self.accueil_stockage = QComboBox()
+        self.accueil_stockage.addItem("Tous", "tous")
+        self.accueil_stockage.addItem("Local", "local")
+        self.accueil_stockage.addItem("Partagé", "partage")
+        self.accueil_stockage.setFixedWidth(140)
+        ligne_secondaire.addWidget(self.accueil_categories)
+        ligne_secondaire.addWidget(QLabel("Stockage :"))
+        ligne_secondaire.addWidget(self.accueil_stockage)
+        ligne_secondaire.addStretch()
+        layout.addLayout(ligne_secondaire)
+
+        ligne_dates = QHBoxLayout()
+        self.accueil_date_min_active = QCheckBox("Date min")
+        self.accueil_date_min = QDateEdit(QDate.currentDate().addYears(-1))
+        self.accueil_date_min.setCalendarPopup(True)
+        self.accueil_date_min.setDisplayFormat("yyyy-MM-dd")
+        self.accueil_date_min.setEnabled(False)
+        self.accueil_date_max_active = QCheckBox("Date max")
+        self.accueil_date_max = QDateEdit(QDate.currentDate())
+        self.accueil_date_max.setCalendarPopup(True)
+        self.accueil_date_max.setDisplayFormat("yyyy-MM-dd")
+        self.accueil_date_max.setEnabled(False)
+        ligne_dates.addWidget(self.accueil_date_min_active)
+        ligne_dates.addWidget(self.accueil_date_min)
+        ligne_dates.addWidget(self.accueil_date_max_active)
+        ligne_dates.addWidget(self.accueil_date_max)
+        ligne_dates.addStretch()
+        layout.addLayout(ligne_dates)
+
+        ligne_tri = QGridLayout()
+        self.accueil_sort_by = QComboBox()
+        self.accueil_sort_by.addItem("Date", "date")
+        self.accueil_sort_by.addItem("Titre", "titre")
+        self.accueil_sort_by.addItem("Auteur", "auteur")
+        self.accueil_sort_order = QComboBox()
+        self.accueil_sort_order.addItem("Décroissant", "desc")
+        self.accueil_sort_order.addItem("Croissant", "asc")
+        self.btn_accueil_rechercher = QPushButton("Rechercher")
+        ligne_tri.addWidget(QLabel("Trier par :"), 0, 0)
+        ligne_tri.addWidget(self.accueil_sort_by, 0, 1)
+        ligne_tri.addWidget(QLabel("Ordre :"), 0, 2)
+        ligne_tri.addWidget(self.accueil_sort_order, 0, 3)
+        ligne_tri.addWidget(self.btn_accueil_rechercher, 0, 4)
+        layout.addLayout(ligne_tri)
+
+        self.accueil_date_min_active.toggled.connect(self.accueil_date_min.setEnabled)
+        self.accueil_date_max_active.toggled.connect(self.accueil_date_max.setEnabled)
+        self.btn_accueil_rechercher.clicked.connect(self.executer_recherche_accueil)
+        for champ in (self.accueil_auteur, self.accueil_mots_cles):
+            champ.returnPressed.connect(self.executer_recherche_accueil)
+
+        parent_layout.addWidget(accueil_filters, alignment=Qt.AlignmentFlag.AlignCenter)
+
     def executer_recherche_accueil(self):
         texte_saisi = self.search_bar_accueil.text().strip()
         self.afficherInterfaceDocuments()
         self.search_titre.setText(texte_saisi)
+        self.search_auteur.setText(self.accueil_auteur.text().strip())
+        self.search_mots_cles.setText(self.accueil_mots_cles.text().strip())
+        self.search_categories.set_checked_items(self.accueil_categories.checked_items())
+        self.search_stockage.setCurrentIndex(self.accueil_stockage.currentIndex())
+        self.search_date_min_active.setChecked(self.accueil_date_min_active.isChecked())
+        self.search_date_max_active.setChecked(self.accueil_date_max_active.isChecked())
+        self.search_date_min.setDate(self.accueil_date_min.date())
+        self.search_date_max.setDate(self.accueil_date_max.date())
+
+        sort_by_was_blocked = self.search_sort_by.blockSignals(True)
+        sort_order_was_blocked = self.search_sort_order.blockSignals(True)
+        self.search_sort_by.setCurrentIndex(self.accueil_sort_by.currentIndex())
+        self.search_sort_order.setCurrentIndex(self.accueil_sort_order.currentIndex())
+        self.search_sort_by.blockSignals(sort_by_was_blocked)
+        self.search_sort_order.blockSignals(sort_order_was_blocked)
+
         self.rechercherDocuments()
         self.search_titre.setFocus()
+
+    def reinitialiserRechercheAccueil(self):
+        self.search_bar_accueil.clear()
+        self.accueil_auteur.clear()
+        self.accueil_mots_cles.clear()
+        self.accueil_categories.clear_checked_items()
+        self.accueil_stockage.setCurrentIndex(0)
+        self.accueil_date_min_active.setChecked(False)
+        self.accueil_date_max_active.setChecked(False)
+        self.accueil_date_min.setEnabled(False)
+        self.accueil_date_max.setEnabled(False)
+        self.accueil_sort_by.setCurrentIndex(0)
+        self.accueil_sort_order.setCurrentIndex(0)
+        self.search_bar_accueil.setFocus()
 
     def afficherMenuContextuelDocument(self, position):
         menu = self.creerMenuContextuelDocument(position)

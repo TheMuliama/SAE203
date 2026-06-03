@@ -12,7 +12,7 @@ Depuis le dossier du projet, lancez :
 
 L'application ouvre une fenêtre avec :
 
-- une zone de recherche en haut à gauche ;
+- une zone de recherche avancée sur la page d'accueil ;
 - une liste de documents au centre, vide au démarrage ;
 - une fiche de détails à droite ;
 - des boutons pour ouvrir ou télécharger le document sélectionné.
@@ -33,6 +33,8 @@ Pour lancer la recherche, remplissez les champs souhaités puis cliquez sur `Rec
 Les champs vides sont ignorés. Si vous cliquez sur `Rechercher` sans remplir de champ, tous les documents sont affichés.
 
 Le filtre `Stockage` est sur `Tous` par défaut. Il affiche donc les documents locaux et les documents partagés. Choisissez `Local` pour voir seulement les fichiers rangés dans l'espace local, ou `Partagé` pour voir seulement les documents partagés.
+
+La page d'accueil propose les mêmes filtres principaux. Quand vous lancez une recherche depuis l'accueil, l'application ouvre la liste des documents et conserve les filtres utilisés dans la zone de recherche principale.
 
 ## Comprendre la logique des filtres
 

@@ -68,6 +68,45 @@ class InterfaceSearchTest(unittest.TestCase):
     def test_chargement_initial(self):
         self.assertEqual(self.window.table.rowCount(), 0)
 
+    def test_recherche_avancee_depuis_accueil(self):
+        self.window.search_bar_accueil.setText("liste")
+        self.window.accueil_stockage.setCurrentIndex(1)
+        self.window.accueil_sort_by.setCurrentIndex(1)
+        self.window.accueil_sort_order.setCurrentIndex(1)
+
+        self.window.executer_recherche_accueil()
+
+        self.assertTrue(self.window.accueil_container.isHidden())
+        self.assertFalse(self.window.left_container.isHidden())
+        self.assertEqual(self.window.search_titre.text(), "liste")
+        self.assertEqual(self.window.search_stockage.currentData(), "local")
+        self.assertEqual(self.window.search_sort_by.currentData(), "titre")
+        self.assertEqual(self.window.search_sort_order.currentData(), "asc")
+        self.assertGreater(self.window.table.rowCount(), 0)
+        self.assertEqual(set(self.table_storages()), {"local"})
+
+    def test_reinitialisation_recherche_accueil(self):
+        self.window.search_bar_accueil.setText("contrat")
+        self.window.accueil_auteur.setText("Fabien")
+        self.window.accueil_mots_cles.setText("reseau")
+        self.window.accueil_stockage.setCurrentIndex(2)
+        self.window.accueil_date_min_active.setChecked(True)
+        self.window.accueil_date_max_active.setChecked(True)
+        self.window.accueil_sort_by.setCurrentIndex(2)
+        self.window.accueil_sort_order.setCurrentIndex(1)
+
+        self.window.reinitialiserRechercheAccueil()
+
+        self.assertEqual(self.window.search_bar_accueil.text(), "")
+        self.assertEqual(self.window.accueil_auteur.text(), "")
+        self.assertEqual(self.window.accueil_mots_cles.text(), "")
+        self.assertEqual(self.window.accueil_categories.checked_items(), [])
+        self.assertEqual(self.window.accueil_stockage.currentData(), "tous")
+        self.assertFalse(self.window.accueil_date_min_active.isChecked())
+        self.assertFalse(self.window.accueil_date_max_active.isChecked())
+        self.assertEqual(self.window.accueil_sort_by.currentData(), "date")
+        self.assertEqual(self.window.accueil_sort_order.currentData(), "desc")
+
     def test_recherche_sans_filtre_affiche_tous_les_documents(self):
         self.window.rechercherDocuments()
 
