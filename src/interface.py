@@ -86,7 +86,7 @@ class SowedropPreferencesDialog(QDialog):
 
         h_layout_police = QHBoxLayout()
         self.spin_font = QSpinBox()
-        self.spin_font.setRange(8, 24)
+        self.spin_font.setRange(1, 40)
         self.spin_font.setValue(actuelle_taille)
         self.spin_font.setFixedWidth(80)
 
