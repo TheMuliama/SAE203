@@ -523,9 +523,16 @@ class MainWindow(QMainWindow):
         self.right_panel.show()
 
     def creerFiltresAccueil(self, parent_layout):
-        accueil_filters = QWidget()
-        accueil_filters.setFixedWidth(620)
-        layout = QVBoxLayout(accueil_filters)
+        self.btn_accueil_recherche_avancee = QPushButton("Recherche avancée")
+        parent_layout.addWidget(
+            self.btn_accueil_recherche_avancee,
+            alignment=Qt.AlignmentFlag.AlignCenter,
+        )
+
+        # Les filtres avancés existent dès le départ, mais restent cachés.
+        self.accueil_advanced_container = QWidget()
+        self.accueil_advanced_container.setFixedWidth(620)
+        layout = QVBoxLayout(self.accueil_advanced_container)
         layout.setContentsMargins(0, 8, 0, 0)
 
         ligne_textes = QHBoxLayout()
@@ -590,10 +597,20 @@ class MainWindow(QMainWindow):
         self.accueil_date_min_active.toggled.connect(self.accueil_date_min.setEnabled)
         self.accueil_date_max_active.toggled.connect(self.accueil_date_max.setEnabled)
         self.btn_accueil_rechercher.clicked.connect(self.executer_recherche_accueil)
+        self.btn_accueil_recherche_avancee.clicked.connect(self.toggleRechercheAvanceeAccueil)
         for champ in (self.accueil_auteur, self.accueil_mots_cles):
             champ.returnPressed.connect(self.executer_recherche_accueil)
 
-        parent_layout.addWidget(accueil_filters, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.accueil_advanced_container.hide()
+        parent_layout.addWidget(self.accueil_advanced_container, alignment=Qt.AlignmentFlag.AlignCenter)
+
+    def toggleRechercheAvanceeAccueil(self):
+        # L'utilisateur choisit lui-même d'afficher ou cacher ces filtres.
+        visible = self.accueil_advanced_container.isHidden()
+        self.accueil_advanced_container.setVisible(visible)
+        self.btn_accueil_recherche_avancee.setText(
+            "Masquer la recherche avancée" if visible else "Recherche avancée"
+        )
 
     def executer_recherche_accueil(self):
         # Recherche lancée depuis la page d'accueil
@@ -620,6 +637,7 @@ class MainWindow(QMainWindow):
         self.search_titre.setFocus()
 
     def reinitialiserRechercheAccueil(self):
+        # Le reset ne ferme pas le panneau avancé : seul le bouton le fait.
         self.search_bar_accueil.clear()
         self.accueil_auteur.clear()
         self.accueil_mots_cles.clear()
@@ -670,18 +688,35 @@ class MainWindow(QMainWindow):
     def creerFiltresRecherche(self, parent_layout):
         parent_layout.addWidget(QLabel("Recherche multicritère"))
 
-        # Première ligne : recherche par titre, auteur et mots-clés
+        # Ligne simple : disponible sans ouvrir la recherche avancée
         ligne_principale = QHBoxLayout()
         self.search_titre = QLineEdit()
         self.search_titre.setPlaceholderText("Titre")
+        self.btn_recherche_avancee = QPushButton("Recherche avancée")
+        self.btn_rechercher = QPushButton("Rechercher")
+        self.btn_reset_search = QPushButton("Réinitialiser")
+        self.btn_sync_partage = QPushButton("Synchroniser")
+        self.btn_sync_partage.setStatusTip("Récupérer les documents partagés depuis le SFTP")
+        ligne_principale.addWidget(self.search_titre)
+        ligne_principale.addWidget(self.btn_recherche_avancee)
+        ligne_principale.addWidget(self.btn_rechercher)
+        ligne_principale.addWidget(self.btn_reset_search)
+        ligne_principale.addWidget(self.btn_sync_partage)
+        parent_layout.addLayout(ligne_principale)
+
+        # Les autres critères sont masqués tant que l'utilisateur ne les demande pas.
+        self.search_advanced_container = QWidget()
+        search_advanced_layout = QVBoxLayout(self.search_advanced_container)
+        search_advanced_layout.setContentsMargins(0, 0, 0, 0)
+
+        ligne_textes_avances = QHBoxLayout()
         self.search_auteur = QLineEdit()
         self.search_auteur.setPlaceholderText("Auteur")
         self.search_mots_cles = QLineEdit()
         self.search_mots_cles.setPlaceholderText("Mots-clés, séparés par virgules")
-        ligne_principale.addWidget(self.search_titre)
-        ligne_principale.addWidget(self.search_auteur)
-        ligne_principale.addWidget(self.search_mots_cles)
-        parent_layout.addLayout(ligne_principale)
+        ligne_textes_avances.addWidget(self.search_auteur)
+        ligne_textes_avances.addWidget(self.search_mots_cles)
+        search_advanced_layout.addLayout(ligne_textes_avances)
 
         # Deuxième ligne : choix des catégories avec cases à cocher
         ligne_secondaire = QHBoxLayout()
@@ -699,9 +734,9 @@ class MainWindow(QMainWindow):
         ligne_secondaire.addWidget(QLabel("Stockage :"))
         ligne_secondaire.addWidget(self.search_stockage)
         ligne_secondaire.addStretch()
-        parent_layout.addLayout(ligne_secondaire)
+        search_advanced_layout.addLayout(ligne_secondaire)
 
-        # Troisième ligne : filtres de dates et boutons de recherche
+        # Troisième ligne : filtres de dates
         ligne_dates = QHBoxLayout()
         self.search_date_min_active = QCheckBox("Date min")
         self.search_date_min = QDateEdit(QDate.currentDate().addYears(-1))
@@ -715,24 +750,12 @@ class MainWindow(QMainWindow):
         self.search_date_max.setDisplayFormat("yyyy-MM-dd")
         self.search_date_max.setEnabled(False)
 
-        self.btn_rechercher = QPushButton("Rechercher")
-        self.btn_reset_search = QPushButton("Réinitialiser")
-        self.btn_sync_partage = QPushButton("Synchroniser")
-        self.btn_sync_partage.setStatusTip("Récupérer les documents partagés depuis le SFTP")
-
         ligne_dates.addWidget(self.search_date_min_active)
         ligne_dates.addWidget(self.search_date_min)
         ligne_dates.addWidget(self.search_date_max_active)
         ligne_dates.addWidget(self.search_date_max)
         ligne_dates.addStretch()
-        ligne_dates.addWidget(self.btn_rechercher)
-        ligne_dates.addWidget(self.btn_reset_search)
-        parent_layout.addLayout(ligne_dates)
-
-        ligne_sync = QHBoxLayout()
-        ligne_sync.addStretch()
-        ligne_sync.addWidget(self.btn_sync_partage)
-        parent_layout.addLayout(ligne_sync)
+        search_advanced_layout.addLayout(ligne_dates)
 
         # Dernière ligne : paramètres de tri des résultats
         ligne_tri = QHBoxLayout()
@@ -750,11 +773,15 @@ class MainWindow(QMainWindow):
         ligne_tri.addWidget(QLabel("Ordre :"))
         ligne_tri.addWidget(self.search_sort_order)
         ligne_tri.addStretch()
-        parent_layout.addLayout(ligne_tri)
+        search_advanced_layout.addLayout(ligne_tri)
+
+        self.search_advanced_container.hide()
+        parent_layout.addWidget(self.search_advanced_container)
 
         # Connexions des champs de recherche
         self.search_date_min_active.toggled.connect(self.search_date_min.setEnabled)
         self.search_date_max_active.toggled.connect(self.search_date_max.setEnabled)
+        self.btn_recherche_avancee.clicked.connect(self.toggleRechercheAvanceePrincipale)
         self.btn_rechercher.clicked.connect(self.rechercherDocuments)
         self.btn_reset_search.clicked.connect(self.reinitialiserRecherche)
         self.btn_sync_partage.clicked.connect(lambda: self.synchroniserDocumentsPartages(afficher_message=True))
@@ -763,6 +790,14 @@ class MainWindow(QMainWindow):
 
         for champ in (self.search_titre, self.search_auteur, self.search_mots_cles):
             champ.returnPressed.connect(self.rechercherDocuments)
+
+    def toggleRechercheAvanceePrincipale(self):
+        # La recherche et le reset ne ferment pas ce panneau automatiquement.
+        visible = self.search_advanced_container.isHidden()
+        self.search_advanced_container.setVisible(visible)
+        self.btn_recherche_avancee.setText(
+            "Masquer la recherche avancée" if visible else "Recherche avancée"
+        )
 
     def chargerDocuments(self):
         # Récupère tous les documents via la couche logique puis les affiche
