@@ -74,10 +74,25 @@ class InterfaceSearchTest(unittest.TestCase):
 
     def test_chargement_initial(self):
         self.assertEqual(self.window.table.rowCount(), 0)
+        self.assertEqual(self.window.search_bar_accueil.width(), 470)
+        self.assertEqual(self.window.btn_accueil_rechercher.width(), 105)
+        self.assertEqual(self.window.btn_accueil_recherche_avancee.width(), 145)
+        self.assertEqual(self.window.search_bar_accueil.height(), 44)
+        self.assertEqual(self.window.btn_accueil_rechercher.height(), 44)
+        self.assertEqual(self.window.btn_accueil_recherche_avancee.height(), 44)
         self.assertTrue(self.window.accueil_advanced_container.isHidden())
         self.assertEqual(self.window.btn_accueil_recherche_avancee.text(), "Recherche avancée")
         self.assertTrue(self.window.search_advanced_container.isHidden())
         self.assertEqual(self.window.btn_recherche_avancee.text(), "Recherche avancée")
+
+    def test_bouton_rechercher_accueil_lance_la_recherche(self):
+        self.window.search_bar_accueil.setText("contrat")
+
+        self.window.btn_accueil_rechercher.click()
+
+        self.assertTrue(self.window.accueil_container.isHidden())
+        self.assertEqual(self.window.search_titre.text(), "contrat")
+        self.assertEqual(self.window.table.rowCount(), 1)
 
     def test_recherche_avancee_accueil_affiche_et_masque_les_filtres(self):
         self.window.btn_accueil_recherche_avancee.click()

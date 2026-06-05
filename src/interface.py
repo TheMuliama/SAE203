@@ -415,10 +415,9 @@ class MainWindow(QMainWindow):
 
         self.search_bar_accueil = QLineEdit()
         self.search_bar_accueil.setPlaceholderText("Rechercher un document et appuyez sur Entrée...")
-        self.search_bar_accueil.setFixedWidth(520)
+        self.search_bar_accueil.setFixedSize(470, 44)
         self.search_bar_accueil.setObjectName("searchBarAccueil")
         self.search_bar_accueil.returnPressed.connect(self.executer_recherche_accueil)
-        accueil_layout.addWidget(self.search_bar_accueil, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.creerFiltresAccueil(accueil_layout)
 
@@ -523,15 +522,21 @@ class MainWindow(QMainWindow):
         self.right_panel.show()
 
     def creerFiltresAccueil(self, parent_layout):
+        self.btn_accueil_rechercher = QPushButton("Rechercher")
         self.btn_accueil_recherche_avancee = QPushButton("Recherche avancée")
-        parent_layout.addWidget(
-            self.btn_accueil_recherche_avancee,
-            alignment=Qt.AlignmentFlag.AlignCenter,
-        )
+        self.btn_accueil_rechercher.setFixedSize(105, 44)
+        self.btn_accueil_recherche_avancee.setFixedSize(145, 44)
+
+        # Ligne simple d'accueil : recherche rapide + accès aux filtres avancés.
+        ligne_recherche = QHBoxLayout()
+        ligne_recherche.addWidget(self.search_bar_accueil)
+        ligne_recherche.addWidget(self.btn_accueil_rechercher)
+        ligne_recherche.addWidget(self.btn_accueil_recherche_avancee)
+        parent_layout.addLayout(ligne_recherche)
 
         # Les filtres avancés existent dès le départ, mais restent cachés.
         self.accueil_advanced_container = QWidget()
-        self.accueil_advanced_container.setFixedWidth(620)
+        self.accueil_advanced_container.setFixedWidth(660)
         layout = QVBoxLayout(self.accueil_advanced_container)
         layout.setContentsMargins(0, 8, 0, 0)
 
@@ -586,12 +591,10 @@ class MainWindow(QMainWindow):
         self.accueil_sort_order = QComboBox()
         self.accueil_sort_order.addItem("Décroissant", "desc")
         self.accueil_sort_order.addItem("Croissant", "asc")
-        self.btn_accueil_rechercher = QPushButton("Rechercher")
         ligne_tri.addWidget(QLabel("Trier par :"), 0, 0)
         ligne_tri.addWidget(self.accueil_sort_by, 0, 1)
         ligne_tri.addWidget(QLabel("Ordre :"), 0, 2)
         ligne_tri.addWidget(self.accueil_sort_order, 0, 3)
-        ligne_tri.addWidget(self.btn_accueil_rechercher, 0, 4)
         layout.addLayout(ligne_tri)
 
         self.accueil_date_min_active.toggled.connect(self.accueil_date_min.setEnabled)
