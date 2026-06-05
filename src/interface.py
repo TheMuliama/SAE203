@@ -1,5 +1,4 @@
 import os
-import sys
 import platform
 import shutil
 import sqlite3
@@ -39,6 +38,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.app_paths import get_app_paths
 from src.database import build_repository
 from src.logic import DocumentInput, LogicService, SearchFilters, ValidationError
 from src.sftp_storage import SftpStorage, SftpStorageError, is_sftp_resource
@@ -112,23 +112,16 @@ def chemin_ressource(chemin_relatif: str) -> str:
     Retourne un chemin utilisable en développement et dans l'exécutable PyInstaller.
 
     En développement, les fichiers sont cherchés depuis la racine du projet.
-    En exécutable, PyInstaller peut placer les fichiers soit à côté de l'exécutable,
-    soit dans le dossier _internal. Cette fonction teste les deux cas.
+    En exécutable, les fichiers utilisateur sont à côté de l'exécutable et les
+    fichiers embarqués restent disponibles dans le dossier interne PyInstaller.
     """
     chemin_relatif = chemin_relatif.replace("\\", "/").lstrip("/")
+    paths = get_app_paths()
 
-    candidats = []
-
-    if getattr(sys, "frozen", False):
-        dossier_exe = Path(sys.executable).resolve().parent
-        candidats.append(dossier_exe / chemin_relatif)
-        candidats.append(dossier_exe / "_internal" / chemin_relatif)
-
-        dossier_meipass = Path(getattr(sys, "_MEIPASS", dossier_exe))
-        candidats.append(dossier_meipass / chemin_relatif)
-
-    racine_projet = Path(__file__).resolve().parent.parent
-    candidats.append(racine_projet / chemin_relatif)
+    candidats = [
+        paths.project_root / chemin_relatif,
+        paths.bundled_root / chemin_relatif,
+    ]
     candidats.append(Path.cwd() / chemin_relatif)
 
     for candidat in candidats:
@@ -382,7 +375,7 @@ class MainWindow(QMainWindow):
     def __init__(self, logic_service=None, project_root=None):
         super().__init__()
 
-        self.project_root = Path(project_root or Path(__file__).resolve().parent.parent)
+        self.project_root = Path(project_root or get_app_paths().project_root)
         self.logic = logic_service or LogicService(build_repository(self.project_root))
 
         self.setWindowTitle("SoweDrop")
