@@ -11,11 +11,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QDialog
 
 from src.database import SQLiteRepository
-from src.interface import MainWindow
-from src.logic import LogicService
+from src.interface import MAX_IMPORT_FILE_SIZE_BYTES, MainWindow
+from src.logic import LogicService, ValidationError
 
 
 class InterfaceSearchTest(unittest.TestCase):
@@ -93,6 +93,76 @@ class InterfaceSearchTest(unittest.TestCase):
         self.assertTrue(self.window.accueil_container.isHidden())
         self.assertEqual(self.window.search_titre.text(), "contrat")
         self.assertEqual(self.window.table.rowCount(), 1)
+
+    def test_fichier_importe_sous_la_limite_accepte(self):
+        fichier = Path(self.temp_dir.name) / "petit.pdf"
+        fichier.write_bytes(b"x" * 1024)
+
+        self.window.validerTailleFichierImporte(fichier)
+
+    def test_fichier_importe_trop_volumineux_refuse(self):
+        fichier = Path(self.temp_dir.name) / "trop-lourd.pdf"
+        with fichier.open("wb") as stream:
+            stream.truncate(MAX_IMPORT_FILE_SIZE_BYTES + 1)
+
+        with self.assertRaisesRegex(ValidationError, "taille maximale"):
+            self.window.validerTailleFichierImporte(fichier)
+
+    def test_fichier_importe_absent_refuse(self):
+        fichier = Path(self.temp_dir.name) / "absent.pdf"
+
+        with self.assertRaisesRegex(ValidationError, "introuvable"):
+            self.window.validerTailleFichierImporte(fichier)
+
+    def test_import_refuse_un_fichier_trop_lourd_avant_copie(self):
+        fichier = Path(self.temp_dir.name) / "trop-lourd.pdf"
+        with fichier.open("wb") as stream:
+            stream.truncate(MAX_IMPORT_FILE_SIZE_BYTES + 1)
+
+        class FakeDialog:
+            def __init__(self, parent=None, categories=None):
+                pass
+
+            def exec(self):
+                return QDialog.DialogCode.Accepted
+
+            def get_data(self):
+                return {
+                    "titre": "Document trop lourd",
+                    "auteur": "Testeur",
+                    "date": "2026-06-05",
+                    "stockage": "local",
+                    "categories": [],
+                    "mots_cles": [],
+                    "description": "",
+                    "fichier": str(fichier),
+                }
+
+        copies = []
+        warnings = []
+        original_copy = self.window.copierFichierDansStockage
+
+        def fake_copy(source_file, stockage):
+            copies.append((source_file, stockage))
+            return original_copy(source_file, stockage)
+
+        original_dialog = __import__("src.interface", fromlist=["AddDocumentDialog"]).AddDocumentDialog
+        original_warning = __import__("src.interface", fromlist=["QMessageBox"]).QMessageBox.warning
+        interface_module = __import__("src.interface", fromlist=["AddDocumentDialog", "QMessageBox"])
+
+        self.window.copierFichierDansStockage = fake_copy
+        interface_module.AddDocumentDialog = FakeDialog
+        interface_module.QMessageBox.warning = lambda parent, title, message: warnings.append(message)
+
+        try:
+            self.window.importDocument()
+        finally:
+            interface_module.AddDocumentDialog = original_dialog
+            interface_module.QMessageBox.warning = original_warning
+            self.window.copierFichierDansStockage = original_copy
+
+        self.assertEqual(copies, [])
+        self.assertTrue(any("taille maximale" in message for message in warnings))
 
     def test_recherche_avancee_accueil_affiche_et_masque_les_filtres(self):
         self.window.btn_accueil_recherche_avancee.click()
