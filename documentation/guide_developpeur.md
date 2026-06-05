@@ -9,6 +9,7 @@ L'application est une application desktop Python avec PyQt6 et SQLite.
 Les fichiers principaux sont :
 
 - `main.py` : point d'entrée de l'application ;
+- `src/app_paths.py` : résolution des chemins en développement et en exécutable ;
 - `src/interface.py` : interface graphique PyQt6 ;
 - `src/logic.py` : logique métier et validation ;
 - `src/database.py` : accès SQLite et requêtes SQL ;
@@ -50,6 +51,29 @@ data/schema_documents_sqlite.sql
 ```
 
 Au démarrage, `SQLiteRepository` vérifie la base, applique le schéma si besoin, ajoute les catégories autorisées, puis importe les métadonnées texte si la table `Documents` est vide.
+
+## Chemins en mode exécutable
+
+En développement, la racine utilisée par l'application est la racine du projet.
+En exécutable PyInstaller, `src/app_paths.py` sépare deux emplacements :
+
+- la racine modifiable : le dossier qui contient `SoweDrop` ou `SoweDrop.exe` ;
+- la racine embarquée : le dossier interne PyInstaller qui contient les fichiers fournis avec l'application.
+
+Au premier lancement, `bootstrap_external_data()` crée le dossier `data/` à côté
+de l'exécutable, puis copie les données initiales si elles sont absentes :
+
+- le schéma SQLite ;
+- les métadonnées texte ;
+- les documents de démonstration ;
+- `data/private/sftp_config.json`.
+
+La base `data/documents.db` n'est pas copiée depuis le bundle : elle est créée
+dans le dossier externe par `SQLiteRepository`. Une configuration SFTP déjà
+présente dans `data/private/` n'est jamais remplacée.
+
+Si une exception bloque le démarrage, `main.py` écrit `sowedrop_error.log` à côté
+de l'exécutable avant de relancer l'exception.
 
 ## Recherche multicritère
 

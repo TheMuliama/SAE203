@@ -32,6 +32,13 @@ python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
+Avec un exécutable Windows ou Linux, lancez le fichier `SoweDrop` ou
+`SoweDrop.exe` depuis son dossier. Au premier démarrage, l'application crée un
+dossier `data/` à côté de l'exécutable et y copie les données initiales.
+
+Si l'exécutable plante au lancement, un fichier `sowedrop_error.log` est créé à
+côté de l'exécutable pour aider au diagnostic.
+
 ## Organisation des données
 
 Les fichiers physiques sont rangés dans :
@@ -54,6 +61,10 @@ data/documents.db
 ```
 
 Le fichier `data/documents.db` est ignoré par Git, car il s'agit d'une base locale générée par l'application.
+
+Dans une version exécutable, ce dossier `data/` se trouve à côté de l'exécutable.
+La configuration SFTP initiale est copiée dans `data/private/sftp_config.json`
+au premier lancement si elle n'existe pas déjà.
 
 ## Documentation
 

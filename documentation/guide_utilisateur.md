@@ -170,3 +170,17 @@ La base SQLite utilisée par l'application est ici :
 ```text
 data/documents.db
 ```
+
+Avec la version exécutable, le dossier `data/` est créé à côté de `SoweDrop` ou
+`SoweDrop.exe`. Les fichiers fournis avec l'application sont copiés au premier
+lancement seulement s'ils n'existent pas déjà.
+
+La configuration du stockage partagé SFTP se trouve dans :
+
+```text
+data/private/sftp_config.json
+```
+
+Si une configuration existe déjà à cet emplacement, elle est conservée. Si
+l'exécutable ne démarre pas correctement, regardez le fichier
+`sowedrop_error.log` placé à côté de l'exécutable.
