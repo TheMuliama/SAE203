@@ -44,6 +44,14 @@ from src.logic import DocumentInput, LogicService, SearchFilters, ValidationErro
 from src.sftp_storage import SftpStorage, SftpStorageError, is_sftp_resource
 
 
+MAX_IMPORT_FILE_SIZE_BYTES = 20 * 1024 * 1024
+
+
+def format_file_size(size_bytes: int) -> str:
+    """Affiche une taille de fichier en Mo pour les messages utilisateur."""
+    return f"{size_bytes / (1024 * 1024):.0f} Mo"
+
+
 class SowedropPreferencesDialog(QDialog):
     def __init__(self, parent=None, actuel_theme="Clair", actuelle_taille=10):
         super().__init__(parent)
@@ -1002,6 +1010,7 @@ class MainWindow(QMainWindow):
             try:
                 if not data["fichier"]:
                     raise ValidationError("Veuillez sélectionner un fichier.")
+                self.validerTailleFichierImporte(data["fichier"])
                 if not data["titre"].strip():
                     raise ValidationError("Le titre est obligatoire.")
                 if not data["auteur"].strip():
@@ -1051,6 +1060,21 @@ class MainWindow(QMainWindow):
                 QMessageBox.critical(self, "Erreur SFTP", str(exc))
             except Exception as exc:
                 QMessageBox.critical(self, "Erreur", f"Impossible d'ajouter le document : {exc}")
+
+    def validerTailleFichierImporte(self, file_path):
+        # On contrôle la taille avant toute copie locale ou upload SFTP.
+        fichier = Path(file_path)
+        if not fichier.exists():
+            raise ValidationError("Le fichier sélectionné est introuvable.")
+
+        taille = fichier.stat().st_size
+        if taille > MAX_IMPORT_FILE_SIZE_BYTES:
+            limite = format_file_size(MAX_IMPORT_FILE_SIZE_BYTES)
+            taille_lue = format_file_size(taille)
+            raise ValidationError(
+                f"Le fichier est trop volumineux ({taille_lue}). "
+                f"La taille maximale autorisée est {limite}."
+            )
 
     def copierFichierDansStockage(self, source_file, stockage):
         """
