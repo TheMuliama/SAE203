@@ -1,11 +1,30 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
+
+project_root = Path(SPECPATH)
+datas = [('assets', 'assets'), ('data/schema_documents_sqlite.sql', 'data')]
+
+for source_dir in [
+    project_root / 'data' / 'metadata',
+    project_root / 'data' / 'documents',
+    project_root / 'data' / 'private',
+]:
+    if not source_dir.exists():
+        continue
+
+    for source in source_dir.rglob('*'):
+        if source.is_file():
+            destination = source.parent.relative_to(project_root)
+            datas.append((str(source), str(destination)))
+
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets', 'assets'), ('data', 'data')],
+    datas=datas,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
