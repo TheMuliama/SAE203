@@ -142,6 +142,8 @@ Le formulaire demande :
 
 Le fichier est copié dans le dossier de stockage choisi, puis ses informations sont enregistrées dans la base.
 
+La taille maximale d'un fichier importé est de `20 Mo`. Cette limite s'applique aux documents locaux et aux documents partagés. Si le fichier est trop volumineux, l'application le refuse avant de le copier ou de l'envoyer sur le stockage partagé.
+
 ## Supprimer un document
 
 Le menu `Édition > Supprimer un document` supprime le document sélectionné après confirmation.
